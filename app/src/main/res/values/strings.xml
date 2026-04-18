@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">AegisInput</string>
+    <string name="subtype_zhuyin">注音</string>
+    <string name="subtype_pinyin">拼音</string>
+</resources>
