@@ -75,17 +75,33 @@ Follow these steps to enable full RIME engine support:
 
 ```bash
 # Debug build
-./gradlew :app:assembleDebug
+gradle :app:assembleDebug
 
 # Install on connected device/emulator
-./gradlew :app:installDebug
+gradle :app:installDebug
 
 # Run all unit tests
-./gradlew test
+gradle test
 
 # Run connected (instrumented) tests
-./gradlew connectedAndroidTest
+gradle connectedAndroidTest
 ```
+
+## GitHub Actions
+
+The repository includes two GitHub Actions workflows:
+
+- **CI** (`.github/workflows/ci.yml`) runs on pushes and pull requests to `master` and uploads a debug APK artifact.
+- **Release** (`.github/workflows/release.yml`) runs for tags matching `v*` and publishes the generated release APK to GitHub Releases.
+
+To enable signed release APKs, add these repository secrets:
+
+- `AEGISINPUT_RELEASE_KEYSTORE_B64` — base64-encoded keystore file
+- `AEGISINPUT_RELEASE_KEY_ALIAS`
+- `AEGISINPUT_RELEASE_KEY_PASSWORD`
+- `AEGISINPUT_RELEASE_STORE_PASSWORD`
+
+Without those secrets, the release workflow still produces an unsigned APK so the release pipeline remains usable for validation and internal distribution.
 
 ## Enable the IME
 

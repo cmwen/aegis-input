@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;27.0.12077973" \
+            "cmake;3.22.1"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Prepare signing inputs
+        if: ${{ secrets.AEGISINPUT_RELEASE_KEYSTORE_B64 != '' && secrets.AEGISINPUT_RELEASE_KEY_ALIAS != '' && secrets.AEGISINPUT_RELEASE_KEY_PASSWORD != '' && secrets.AEGISINPUT_RELEASE_STORE_PASSWORD != '' }}
+        env:
+          AEGISINPUT_RELEASE_KEYSTORE_B64: ${{ secrets.AEGISINPUT_RELEASE_KEYSTORE_B64 }}
+          AEGISINPUT_RELEASE_KEY_ALIAS: ${{ secrets.AEGISINPUT_RELEASE_KEY_ALIAS }}
+          AEGISINPUT_RELEASE_KEY_PASSWORD: ${{ secrets.AEGISINPUT_RELEASE_KEY_PASSWORD }}
+          AEGISINPUT_RELEASE_STORE_PASSWORD: ${{ secrets.AEGISINPUT_RELEASE_STORE_PASSWORD }}
+        run: |
+          echo "$AEGISINPUT_RELEASE_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/aegisinput-release.keystore"
+          {
+            echo "AEGISINPUT_RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/aegisinput-release.keystore"
+            echo "AEGISINPUT_RELEASE_KEY_ALIAS=$AEGISINPUT_RELEASE_KEY_ALIAS"
+            echo "AEGISINPUT_RELEASE_KEY_PASSWORD=$AEGISINPUT_RELEASE_KEY_PASSWORD"
+            echo "AEGISINPUT_RELEASE_STORE_PASSWORD=$AEGISINPUT_RELEASE_STORE_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Assemble release APK
+        run: gradle --stacktrace :app:assembleRelease
+
+      - name: Upload release APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aegis-input-release-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      - name: Upload ProGuard mapping
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aegis-input-proguard-mapping
+          path: app/build/outputs/mapping/release/
+          if-no-files-found: warn
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            app/build/outputs/apk/release/*.apk

@@ -4,6 +4,15 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+val releaseKeystorePath = providers.environmentVariable("AEGISINPUT_RELEASE_KEYSTORE_PATH")
+val releaseKeyAlias = providers.environmentVariable("AEGISINPUT_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = providers.environmentVariable("AEGISINPUT_RELEASE_KEY_PASSWORD")
+val releaseStorePassword = providers.environmentVariable("AEGISINPUT_RELEASE_STORE_PASSWORD")
+val hasReleaseSigning = releaseKeystorePath.isPresent &&
+    releaseKeyAlias.isPresent &&
+    releaseKeyPassword.isPresent &&
+    releaseStorePassword.isPresent
+
 android {
     namespace = "com.aegisinput.app"
     compileSdk = 35
@@ -18,6 +27,17 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseKeystorePath.get())
+                storePassword = releaseStorePassword.get()
+                keyAlias = releaseKeyAlias.get()
+                keyPassword = releaseKeyPassword.get()
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -25,6 +45,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

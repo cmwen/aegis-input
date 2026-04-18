@@ -151,6 +151,12 @@ See the [Setup Guide](docs/SETUP.md) for build prerequisites and development ins
 
 For a deeper look at the system design, see the [Architecture Document](docs/ARCHITECTURE.md).
 
+## CI/CD
+
+- **CI** — GitHub Actions runs unit tests for all modules and assembles a debug APK on pushes and pull requests to `master`.
+- **Release** — Pushing a tag like `v0.1.0` builds a release APK, uploads it to the workflow run, and publishes it to a GitHub Release.
+- **Optional signing** — Configure the repository secrets `AEGISINPUT_RELEASE_KEYSTORE_B64`, `AEGISINPUT_RELEASE_KEY_ALIAS`, `AEGISINPUT_RELEASE_KEY_PASSWORD`, and `AEGISINPUT_RELEASE_STORE_PASSWORD` to have the release workflow sign the APK. Without them, the workflow still publishes an unsigned release APK.
+
 ## License
 
 ```
