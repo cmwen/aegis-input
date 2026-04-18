@@ -49,13 +49,16 @@ jobs:
           gradle-version: "8.9"
 
       - name: Prepare signing inputs
-        if: ${{ secrets.AEGISINPUT_RELEASE_KEYSTORE_B64 != '' && secrets.AEGISINPUT_RELEASE_KEY_ALIAS != '' && secrets.AEGISINPUT_RELEASE_KEY_PASSWORD != '' && secrets.AEGISINPUT_RELEASE_STORE_PASSWORD != '' }}
         env:
           AEGISINPUT_RELEASE_KEYSTORE_B64: ${{ secrets.AEGISINPUT_RELEASE_KEYSTORE_B64 }}
           AEGISINPUT_RELEASE_KEY_ALIAS: ${{ secrets.AEGISINPUT_RELEASE_KEY_ALIAS }}
           AEGISINPUT_RELEASE_KEY_PASSWORD: ${{ secrets.AEGISINPUT_RELEASE_KEY_PASSWORD }}
           AEGISINPUT_RELEASE_STORE_PASSWORD: ${{ secrets.AEGISINPUT_RELEASE_STORE_PASSWORD }}
         run: |
+          if [[ -z "$AEGISINPUT_RELEASE_KEYSTORE_B64" || -z "$AEGISINPUT_RELEASE_KEY_ALIAS" || -z "$AEGISINPUT_RELEASE_KEY_PASSWORD" || -z "$AEGISINPUT_RELEASE_STORE_PASSWORD" ]]; then
+            exit 0
+          fi
+
           echo "$AEGISINPUT_RELEASE_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/aegisinput-release.keystore"
           {
             echo "AEGISINPUT_RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/aegisinput-release.keystore"
