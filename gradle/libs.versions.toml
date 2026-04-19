@@ -12,6 +12,7 @@ coroutines = "1.9.0"
 junit = "4.13.2"
 espresso = "3.6.1"
 androidx-test-ext = "1.2.1"
+activity-compose = "1.9.3"
 cmake = "3.22.1"
 
 [libraries]
@@ -27,6 +28,7 @@ compose-runtime = { group = "androidx.compose.runtime", name = "runtime" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
 lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
 
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }

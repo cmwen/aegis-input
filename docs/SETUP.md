@@ -107,9 +107,10 @@ Without those secrets, the release workflow generates a temporary keystore, sign
 
 After installing the APK on your device:
 
-1. Go to **Settings → System → Languages & Input → On-screen keyboard**.
-2. Enable **AegisInput**.
-3. Open any text field and switch to AegisInput using the keyboard switcher in the navigation bar.
+1. Launch **AegisInput** from the app drawer.
+2. Tap **Enable keyboard** and turn on **AegisInput** in **Settings → System → Languages & Input → On-screen keyboard**.
+3. Return to the app and tap **Switch keyboard**, or open any text field and choose AegisInput from the system keyboard picker.
+4. Use the built-in demo screen to verify Zhuyin, Pinyin, Latin, and symbol input before typing in another app.
 
 ## Development Tips
 

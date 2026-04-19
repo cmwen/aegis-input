@@ -1,5 +1,9 @@
 <resources>
     <string name="app_name">AegisInput</string>
+    <string name="launcher_title">AegisInput keyboard</string>
+    <string name="launcher_subtitle">Enable the keyboard, switch to it, and try the built-in demo to verify the MVP input flows.</string>
+    <string name="settings_title">AegisInput settings</string>
+    <string name="settings_subtitle">Quick actions and a local demo for the current keyboard build.</string>
     <string name="subtype_zhuyin">注音</string>
     <string name="subtype_pinyin">拼音</string>
 </resources>

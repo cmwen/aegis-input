@@ -1,10 +1,11 @@
 package com.aegisinput.app
 
 import android.app.Application
+import com.aegisinput.engine.RimeBridge
 
 class AegisInputApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Initialize Rime engine on app startup
+        RimeBridge.initialize(applicationContext)
     }
 }

@@ -6,6 +6,7 @@ A high-performance Android Input Method Editor built with **Kotlin**, **Jetpack 
 
 - **On-device Chinese input** via Librime (RIME engine) — no cloud dependency
 - **Zhuyin and Pinyin** input support with seamless switching
+- **Installable launcher experience** with enable/switch-keyboard actions and a built-in demo surface
 - **Fuzzy matching** for common pronunciation confusions (ㄥ/ㄣ, ㄓ/ㄗ, ㄕ/ㄙ, ㄔ/ㄘ, etc.)
 - **Dynamic hitbox system** that adapts touch targets to reduce mis-taps on dense layouts
 - **Material 3 keyboard UI** built entirely with Jetpack Compose

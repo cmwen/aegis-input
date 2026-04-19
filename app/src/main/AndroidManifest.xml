@@ -9,6 +9,21 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AegisInput">
 
+        <activity
+            android:name="com.aegisinput.app.MainActivity"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name="com.aegisinput.app.SettingsActivity"
+            android:exported="false"
+            android:label="@string/settings_title" />
+
         <service
             android:name="com.aegisinput.app.AegisInputService"
             android:label="@string/app_name"

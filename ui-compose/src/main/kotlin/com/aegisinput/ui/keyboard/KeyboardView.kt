@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -18,26 +17,28 @@ import com.aegisinput.ui.candidate.CandidateBar
 import com.aegisinput.ui.theme.AegisInputTheme
 
 enum class KeyboardMode {
-    QWERTY,
+    LATIN,
+    PINYIN,
     ZHUYIN,
     SYMBOLS
 }
 
 @Composable
 fun KeyboardView(
+    keyboardMode: KeyboardMode,
+    chineseMode: KeyboardMode,
+    onKeyboardModeChange: (KeyboardMode) -> Unit,
     onKeyPress: (String) -> Unit,
     onCandidateSelected: (String) -> Unit,
     candidates: List<String>,
     modifier: Modifier = Modifier
 ) {
-    var currentMode by remember { mutableStateOf(KeyboardMode.QWERTY) }
-    val keyBoundsList = remember { mutableStateListOf<DynamicHitbox.KeyBounds>() }
-
-    val rows = when (currentMode) {
-        KeyboardMode.QWERTY -> KeyboardLayout.qwertyRows
-        KeyboardMode.ZHUYIN -> KeyboardLayout.zhuyinRows
-        KeyboardMode.SYMBOLS -> KeyboardLayout.qwertyRows // placeholder
-    }
+    var shiftEnabled by remember(keyboardMode) { mutableStateOf(false) }
+    val rows = KeyboardLayout.rowsFor(
+        mode = keyboardMode,
+        chineseMode = chineseMode,
+        uppercaseLatin = shiftEnabled && keyboardMode != KeyboardMode.ZHUYIN
+    )
 
     AegisInputTheme {
         Column(
@@ -61,16 +62,19 @@ fun KeyboardView(
                             keyDef = keyDef,
                             onPress = { key ->
                                 when (key.code) {
-                                    "LATIN" -> currentMode = KeyboardMode.QWERTY
-                                    "SYMBOLS" -> currentMode = KeyboardMode.SYMBOLS
-                                    else -> onKeyPress(key.code)
+                                    "MODE_LATIN" -> onKeyboardModeChange(KeyboardMode.LATIN)
+                                    "MODE_CHINESE" -> onKeyboardModeChange(chineseMode)
+                                    "SYMBOLS" -> onKeyboardModeChange(KeyboardMode.SYMBOLS)
+                                    "SHIFT" -> shiftEnabled = !shiftEnabled
+                                    else -> {
+                                        onKeyPress(key.code)
+                                        if (shiftEnabled && keyboardMode == KeyboardMode.LATIN) {
+                                            shiftEnabled = false
+                                        }
+                                    }
                                 }
                             },
-                            modifier = Modifier.weight(keyDef.widthWeight),
-                            onBoundsChanged = { bounds ->
-                                keyBoundsList.removeAll { it.keyDef.code == bounds.keyDef.code }
-                                keyBoundsList.add(bounds)
-                            }
+                            modifier = Modifier.weight(keyDef.widthWeight)
                         )
                     }
                 }

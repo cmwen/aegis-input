@@ -3,10 +3,12 @@
     android:settingsActivity="com.aegisinput.app.SettingsActivity"
     android:isDefault="false">
     <subtype
+        android:imeSubtypeExtraValue="mode=zhuyin"
         android:imeSubtypeMode="keyboard"
         android:imeSubtypeLocale="zh_TW"
         android:label="@string/subtype_zhuyin" />
     <subtype
+        android:imeSubtypeExtraValue="mode=pinyin"
         android:imeSubtypeMode="keyboard"
         android:imeSubtypeLocale="zh_CN"
         android:label="@string/subtype_pinyin" />
