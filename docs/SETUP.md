@@ -92,7 +92,7 @@ gradle connectedAndroidTest
 The repository includes two GitHub Actions workflows:
 
 - **CI** (`.github/workflows/ci.yml`) runs on pushes and pull requests to `master` and uploads a debug APK artifact.
-- **Release** (`.github/workflows/release.yml`) runs for tags matching `v*` and publishes the generated release APK to GitHub Releases.
+- **Release** (`.github/workflows/release.yml`) runs for tags matching `v*` and can also be started from the GitHub Actions UI with a release tag input such as `v0.1.2`. Both paths publish the generated release APK to GitHub Releases.
 
 To enable signed release APKs, add these repository secrets:
 
