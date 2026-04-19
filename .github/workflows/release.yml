@@ -48,27 +48,48 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Prepare signing inputs
-        env:
-          AEGISINPUT_RELEASE_KEYSTORE_B64: ${{ secrets.AEGISINPUT_RELEASE_KEYSTORE_B64 }}
-          AEGISINPUT_RELEASE_KEY_ALIAS: ${{ secrets.AEGISINPUT_RELEASE_KEY_ALIAS }}
-          AEGISINPUT_RELEASE_KEY_PASSWORD: ${{ secrets.AEGISINPUT_RELEASE_KEY_PASSWORD }}
-          AEGISINPUT_RELEASE_STORE_PASSWORD: ${{ secrets.AEGISINPUT_RELEASE_STORE_PASSWORD }}
-        run: |
-          if [[ -z "$AEGISINPUT_RELEASE_KEYSTORE_B64" || -z "$AEGISINPUT_RELEASE_KEY_ALIAS" || -z "$AEGISINPUT_RELEASE_KEY_PASSWORD" || -z "$AEGISINPUT_RELEASE_STORE_PASSWORD" ]]; then
-            exit 0
-          fi
-
-          echo "$AEGISINPUT_RELEASE_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/aegisinput-release.keystore"
-          {
-            echo "AEGISINPUT_RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/aegisinput-release.keystore"
-            echo "AEGISINPUT_RELEASE_KEY_ALIAS=$AEGISINPUT_RELEASE_KEY_ALIAS"
-            echo "AEGISINPUT_RELEASE_KEY_PASSWORD=$AEGISINPUT_RELEASE_KEY_PASSWORD"
-            echo "AEGISINPUT_RELEASE_STORE_PASSWORD=$AEGISINPUT_RELEASE_STORE_PASSWORD"
-          } >> "$GITHUB_ENV"
+      - name: Setup Android signing
+        id: signing
+        uses: ./.github/actions/setup-signing
+        with:
+          keystore_base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 || secrets.AEGISINPUT_RELEASE_KEYSTORE_B64 }}
+          keystore_password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || secrets.AEGISINPUT_RELEASE_STORE_PASSWORD }}
+          key_alias: ${{ secrets.ANDROID_KEY_ALIAS || secrets.AEGISINPUT_RELEASE_KEY_ALIAS }}
+          key_password: ${{ secrets.ANDROID_KEY_PASSWORD || secrets.AEGISINPUT_RELEASE_KEY_PASSWORD }}
+          app_name: "Aegis Input"
+          organization: "cmwen"
 
       - name: Assemble release APK
+        env:
+          AEGISINPUT_RELEASE_KEYSTORE_PATH: ${{ steps.signing.outputs.keystore_path }}
+          AEGISINPUT_RELEASE_KEY_ALIAS: ${{ steps.signing.outputs.key_alias }}
+          AEGISINPUT_RELEASE_KEY_PASSWORD: ${{ steps.signing.outputs.key_password }}
+          AEGISINPUT_RELEASE_STORE_PASSWORD: ${{ steps.signing.outputs.keystore_password }}
         run: gradle --stacktrace :app:assembleRelease
+
+      - name: Save signing credentials for persistence
+        if: steps.signing.outputs.is_auto_generated == 'true'
+        run: |
+          mkdir -p build/signing-credentials
+          cat > build/signing-credentials/signing-credentials.json << EOF
+          {
+            "keystore_base64": "${{ steps.signing.outputs.keystore_base64 }}",
+            "keystore_password": "${{ steps.signing.outputs.keystore_password }}",
+            "key_alias": "${{ steps.signing.outputs.key_alias }}",
+            "key_password": "${{ steps.signing.outputs.key_password }}"
+          }
+          EOF
+
+          cat > build/signing-credentials/README.txt << 'EOF'
+          Download this artifact and run:
+          ./scripts/signing/persist-credentials.sh ./signing-credentials.json
+
+          That will save these values as GitHub repository secrets:
+          - ANDROID_KEYSTORE_BASE64
+          - ANDROID_KEYSTORE_PASSWORD
+          - ANDROID_KEY_ALIAS
+          - ANDROID_KEY_PASSWORD
+          EOF
 
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
@@ -76,6 +97,14 @@ jobs:
           name: aegis-input-release-apk
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      - name: Upload signing credentials
+        if: steps.signing.outputs.is_auto_generated == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: signing-credentials-${{ github.ref_name }}
+          path: build/signing-credentials/*
+          retention-days: 7
 
       - name: Upload ProGuard mapping
         if: always()
@@ -92,3 +121,9 @@ jobs:
           generate_release_notes: true
           files: |
             app/build/outputs/apk/release/*.apk
+
+      - name: Clean up signing files
+        if: always()
+        run: |
+          rm -f "${{ steps.signing.outputs.keystore_path }}"
+          rm -rf build/signing-credentials

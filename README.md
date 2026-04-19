@@ -155,7 +155,7 @@ For a deeper look at the system design, see the [Architecture Document](docs/ARC
 
 - **CI** — GitHub Actions runs unit tests for all modules and assembles a debug APK on pushes and pull requests to `master`.
 - **Release** — Pushing a tag like `v0.1.0` builds a release APK, uploads it to the workflow run, and publishes it to a GitHub Release.
-- **Optional signing** — Configure the repository secrets `AEGISINPUT_RELEASE_KEYSTORE_B64`, `AEGISINPUT_RELEASE_KEY_ALIAS`, `AEGISINPUT_RELEASE_KEY_PASSWORD`, and `AEGISINPUT_RELEASE_STORE_PASSWORD` to have the release workflow sign the APK. Without them, the workflow still publishes an unsigned release APK.
+- **Release signing** — Configure the repository secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` to keep releases signed with a stable keystore. If they are missing, the release workflow generates a temporary keystore and uploads a `signing-credentials-*` artifact so you can persist it for future releases.
 
 ## License
 

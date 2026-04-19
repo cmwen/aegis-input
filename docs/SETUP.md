@@ -96,12 +96,12 @@ The repository includes two GitHub Actions workflows:
 
 To enable signed release APKs, add these repository secrets:
 
-- `AEGISINPUT_RELEASE_KEYSTORE_B64` — base64-encoded keystore file
-- `AEGISINPUT_RELEASE_KEY_ALIAS`
-- `AEGISINPUT_RELEASE_KEY_PASSWORD`
-- `AEGISINPUT_RELEASE_STORE_PASSWORD`
+- `ANDROID_KEYSTORE_BASE64` — base64-encoded keystore file
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
 
-Without those secrets, the release workflow still produces an unsigned APK so the release pipeline remains usable for validation and internal distribution.
+Without those secrets, the release workflow generates a temporary keystore, signs the APK with it, and uploads a `signing-credentials-*` artifact. Download that artifact and run `./scripts/signing/persist-credentials.sh ./signing-credentials.json` to persist the keystore for future releases.
 
 ## Enable the IME
 
