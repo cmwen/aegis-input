@@ -21,7 +21,7 @@
 
         <activity
             android:name="com.aegisinput.app.SettingsActivity"
-            android:exported="false"
+            android:exported="true"
             android:label="@string/settings_title" />
 
         <service

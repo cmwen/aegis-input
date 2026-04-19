@@ -28,9 +28,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,8 +36,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.aegisinput.engine.RimeBridge
-import com.aegisinput.engine.RimeSession
 import com.aegisinput.ui.keyboard.KeyboardMode
 import com.aegisinput.ui.keyboard.KeyboardView
 import com.aegisinput.ui.theme.AegisInputTheme
@@ -199,80 +195,7 @@ private fun FeatureRow(title: String, description: String) {
 
 @Composable
 private fun KeyboardDemoCard() {
-    var chineseMode by remember { mutableStateOf(KeyboardMode.ZHUYIN) }
-    var keyboardMode by remember { mutableStateOf(KeyboardMode.ZHUYIN) }
-    var committedText by remember { mutableStateOf("") }
-    var composingText by remember { mutableStateOf("") }
-    val candidates = remember { mutableStateListOf<String>() }
-    var session by remember { mutableStateOf<RimeSession?>(null) }
-
-    DisposableEffect(Unit) {
-        val demoSession = RimeBridge.createSession()
-        session = demoSession
-        onDispose {
-            RimeBridge.destroySession(demoSession)
-        }
-    }
-
-    fun clearComposition(resetSession: Boolean = true) {
-        if (resetSession) {
-            session?.reset()
-        }
-        composingText = ""
-        candidates.clear()
-    }
-
-    fun syncFromSession() {
-        val activeSession = session ?: return
-        composingText = activeSession.composingText
-        candidates.clear()
-        candidates.addAll(activeSession.candidates)
-    }
-
-    fun commitCandidate(candidate: String) {
-        committedText += candidate
-        clearComposition()
-    }
-
-    fun handleKeyPress(key: String) {
-        val activeSession = session ?: return
-        when (key) {
-            "BACKSPACE" -> {
-                if (keyboardMode.isChineseMode() && activeSession.hasComposing()) {
-                    activeSession.processKey("BackSpace")
-                    syncFromSession()
-                } else if (committedText.isNotEmpty()) {
-                    committedText = committedText.dropLast(1)
-                }
-            }
-            "SPACE" -> {
-                if (keyboardMode.isChineseMode() && candidates.isNotEmpty()) {
-                    commitCandidate(candidates.first())
-                } else {
-                    committedText += " "
-                }
-            }
-            "ENTER" -> {
-                if (keyboardMode.isChineseMode() && activeSession.hasComposing()) {
-                    val committed = activeSession.commit()
-                    committedText += committed
-                    clearComposition(resetSession = false)
-                } else {
-                    committedText += "\n"
-                }
-            }
-            else -> {
-                if (keyboardMode.isChineseMode()) {
-                    activeSession.processKey(
-                        if (chineseMode == KeyboardMode.PINYIN) key.lowercase() else key
-                    )
-                    syncFromSession()
-                } else {
-                    committedText += key
-                }
-            }
-        }
-    }
+    var demoState by remember { mutableStateOf(KeyboardDemoState()) }
 
     Card {
         Column(
@@ -285,53 +208,44 @@ private fun KeyboardDemoCard() {
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = "Preview the input flows before enabling the IME. In the current stub engine, candidates mirror the composing sequence.",
+                text = "Preview the input flows before enabling the IME. This local demo mirrors the composing sequence without starting a live input session.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 DemoModeButton(
                     label = "Zhuyin",
-                    selected = chineseMode == KeyboardMode.ZHUYIN,
+                    selected = demoState.chineseMode == KeyboardMode.ZHUYIN,
                     onClick = {
-                        chineseMode = KeyboardMode.ZHUYIN
-                        if (keyboardMode.isChineseMode()) {
-                            keyboardMode = chineseMode
-                        }
-                        clearComposition()
+                        demoState = demoState.setChineseMode(KeyboardMode.ZHUYIN)
                     }
                 )
                 DemoModeButton(
                     label = "Pinyin",
-                    selected = chineseMode == KeyboardMode.PINYIN,
+                    selected = demoState.chineseMode == KeyboardMode.PINYIN,
                     onClick = {
-                        chineseMode = KeyboardMode.PINYIN
-                        if (keyboardMode.isChineseMode()) {
-                            keyboardMode = chineseMode
-                        }
-                        clearComposition()
+                        demoState = demoState.setChineseMode(KeyboardMode.PINYIN)
                     }
                 )
                 DemoModeButton(
                     label = "Clear",
                     selected = false,
                     onClick = {
-                        committedText = ""
-                        clearComposition()
+                        demoState = demoState.clearAll()
                     }
                 )
             }
             DemoTextSurface(
-                committedText = committedText,
-                composingText = composingText
+                committedText = demoState.committedText,
+                composingText = demoState.composingText
             )
             KeyboardView(
-                keyboardMode = keyboardMode,
-                chineseMode = chineseMode,
-                onKeyboardModeChange = { keyboardMode = it },
-                onKeyPress = { key -> handleKeyPress(key) },
-                onCandidateSelected = { candidate -> commitCandidate(candidate) },
-                candidates = candidates,
+                keyboardMode = demoState.keyboardMode,
+                chineseMode = demoState.chineseMode,
+                onKeyboardModeChange = { demoState = demoState.setKeyboardMode(it) },
+                onKeyPress = { key -> demoState = demoState.handleKeyPress(key) },
+                onCandidateSelected = { candidate -> demoState = demoState.commitCandidate(candidate) },
+                candidates = demoState.candidates,
                 modifier = Modifier.widthIn(max = 640.dp)
             )
         }
@@ -387,8 +301,4 @@ private fun DemoTextSurface(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
-}
-
-private fun KeyboardMode.isChineseMode(): Boolean {
-    return this == KeyboardMode.PINYIN || this == KeyboardMode.ZHUYIN
 }

@@ -179,7 +179,4 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     private val inputMethodManager: InputMethodManager
         get() = getSystemService(InputMethodManager::class.java)
 
-    private fun KeyboardMode.isChineseMode(): Boolean {
-        return this == KeyboardMode.PINYIN || this == KeyboardMode.ZHUYIN
-    }
 }
