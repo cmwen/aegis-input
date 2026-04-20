@@ -51,4 +51,27 @@ class KeyboardDemoStateTest {
         assertTrue(state.composingText.isEmpty())
         assertTrue(state.candidates.isEmpty())
     }
+
+    @Test
+    fun commandModeKeepsLowercaseDirectInput() {
+        val state = KeyboardDemoState()
+            .setKeyboardMode(KeyboardMode.COMMANDS)
+            .handleKeyPress("/")
+            .handleKeyPress("h")
+            .handleKeyPress("e")
+
+        assertEquals("/he", state.committedText)
+        assertTrue(state.composingText.isEmpty())
+        assertTrue(state.candidates.isEmpty())
+    }
+
+    @Test
+    fun changingChineseModeDoesNotExitCommandMode() {
+        val state = KeyboardDemoState()
+            .setKeyboardMode(KeyboardMode.COMMANDS)
+            .setChineseMode(KeyboardMode.PINYIN)
+
+        assertEquals(KeyboardMode.PINYIN, state.chineseMode)
+        assertEquals(KeyboardMode.COMMANDS, state.keyboardMode)
+    }
 }

@@ -24,6 +24,7 @@ object KeyboardLayout {
     ): List<List<KeyDef>> {
         return when (mode) {
             KeyboardMode.LATIN -> latinRows(chineseMode, uppercaseLatin)
+            KeyboardMode.COMMANDS -> commandRows(chineseMode)
             KeyboardMode.PINYIN -> pinyinRows(uppercaseLatin)
             KeyboardMode.ZHUYIN -> zhuyinRows()
             KeyboardMode.SYMBOLS -> symbolRows(chineseMode)
@@ -41,6 +42,37 @@ object KeyboardLayout {
             uppercaseLatin = uppercaseLatin
         )
     }
+
+    private fun commandRows(chineseMode: KeyboardMode): List<List<KeyDef>> = listOf(
+        listOf(
+            KeyDef("q"), KeyDef("w"), KeyDef("e"), KeyDef("r"), KeyDef("t"),
+            KeyDef("y"), KeyDef("u"), KeyDef("i"), KeyDef("o"), KeyDef("p")
+        ),
+        listOf(
+            KeyDef("a"), KeyDef("s"), KeyDef("d"), KeyDef("f"), KeyDef("g"),
+            KeyDef("h"), KeyDef("j"), KeyDef("k"), KeyDef("l")
+        ),
+        listOf(
+            KeyDef("/"),
+            KeyDef("-"),
+            KeyDef("z"), KeyDef("x"), KeyDef("c"), KeyDef("v"),
+            KeyDef("b"), KeyDef("n"), KeyDef("m"),
+            KeyDef("⌫", "BACKSPACE", 1.5f, KeyType.BACKSPACE)
+        ),
+        listOf(
+            KeyDef(
+                label = if (chineseMode == KeyboardMode.ZHUYIN) "注音" else "拼音",
+                code = "MODE_CHINESE",
+                widthWeight = 1.2f,
+                type = KeyType.MODIFIER
+            ),
+            KeyDef("ABC", "MODE_LATIN", 1.1f, KeyType.MODIFIER),
+            KeyDef("123", "SYMBOLS", 1.1f, KeyType.MODIFIER),
+            KeyDef(" ", "SPACE", 2.9f, KeyType.SPACE),
+            KeyDef(".", ".", 0.9f, KeyType.CHARACTER),
+            KeyDef("↵", "ENTER", 1.3f, KeyType.ENTER)
+        )
+    )
 
     private fun pinyinRows(uppercaseLatin: Boolean): List<List<KeyDef>> {
         return qwertyRows(
@@ -89,8 +121,9 @@ object KeyboardLayout {
         ),
         listOf(
             leadingSwitch,
+            KeyDef("CMD", "MODE_COMMANDS", 1.1f, KeyType.MODIFIER),
             KeyDef("123", "SYMBOLS", 1.2f, KeyType.MODIFIER),
-            KeyDef(" ", "SPACE", 3.6f, KeyType.SPACE),
+            KeyDef(" ", "SPACE", 2.5f, KeyType.SPACE),
             KeyDef(".", ".", 0.9f, KeyType.CHARACTER),
             KeyDef("↵", "ENTER", 1.3f, KeyType.ENTER)
         )

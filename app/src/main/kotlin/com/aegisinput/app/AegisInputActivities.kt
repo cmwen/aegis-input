@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.aegisinput.ui.keyboard.CommandPalette
 import com.aegisinput.ui.keyboard.KeyboardMode
 import com.aegisinput.ui.keyboard.KeyboardView
 import com.aegisinput.ui.theme.AegisInputTheme
@@ -172,6 +173,7 @@ private fun FeatureSummaryCard() {
             FeatureRow("Zhuyin layout", "Traditional Chinese phonetic input with candidate selection.")
             FeatureRow("Pinyin layout", "Latin-keyboard input for simplified Chinese workflows.")
             FeatureRow("Latin + symbols", "Quick fallback for English text, digits, and punctuation.")
+            FeatureRow("Command palette", "Lowercase-first slash-command mode with quick inserts for chat, AI, and productivity fields.")
             FeatureRow("Privacy-first", "All composing stays on-device with no network permissions.")
         }
     }
@@ -234,6 +236,13 @@ private fun KeyboardDemoCard() {
                         demoState = demoState.clearAll()
                     }
                 )
+                DemoModeButton(
+                    label = "Cmd",
+                    selected = demoState.keyboardMode == KeyboardMode.COMMANDS,
+                    onClick = {
+                        demoState = demoState.setKeyboardMode(KeyboardMode.COMMANDS)
+                    }
+                )
             }
             DemoTextSurface(
                 committedText = demoState.committedText,
@@ -246,6 +255,11 @@ private fun KeyboardDemoCard() {
                 onKeyPress = { key -> demoState = demoState.handleKeyPress(key) },
                 onCandidateSelected = { candidate -> demoState = demoState.commitCandidate(candidate) },
                 candidates = demoState.candidates,
+                quickCommandSuggestions = if (demoState.keyboardMode == KeyboardMode.COMMANDS) {
+                    CommandPalette.defaultQuickCommands
+                } else {
+                    emptyList()
+                },
                 modifier = Modifier.widthIn(max = 640.dp)
             )
         }

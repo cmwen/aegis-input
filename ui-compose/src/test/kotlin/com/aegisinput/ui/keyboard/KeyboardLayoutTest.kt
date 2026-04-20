@@ -43,6 +43,30 @@ class KeyboardLayoutTest {
     }
 
     @Test
+    fun latinLayoutIncludesCommandPaletteSwitch() {
+        val bottomRow = KeyboardLayout.rowsFor(
+            mode = KeyboardMode.LATIN,
+            chineseMode = KeyboardMode.ZHUYIN,
+            uppercaseLatin = false
+        ).last()
+
+        assertTrue(bottomRow.any { it.code == "MODE_COMMANDS" && it.label == "CMD" })
+    }
+
+    @Test
+    fun commandLayoutDisablesShiftAndExposesCommonCommandKeys() {
+        val rows = KeyboardLayout.rowsFor(
+            mode = KeyboardMode.COMMANDS,
+            chineseMode = KeyboardMode.PINYIN,
+            uppercaseLatin = true
+        )
+
+        assertTrue(rows.flatten().none { it.code == "SHIFT" })
+        assertEquals("/", rows[2].first().code)
+        assertEquals("MODE_LATIN", rows.last()[1].code)
+    }
+
+    @Test
     fun symbolLayoutOffersBothReturnModes() {
         val bottomRow = KeyboardLayout.rowsFor(
             mode = KeyboardMode.SYMBOLS,

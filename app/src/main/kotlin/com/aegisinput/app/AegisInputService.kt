@@ -26,6 +26,7 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.aegisinput.engine.RimeBridge
 import com.aegisinput.engine.RimeSession
+import com.aegisinput.ui.keyboard.CommandPalette
 import com.aegisinput.ui.keyboard.KeyboardMode
 import com.aegisinput.ui.keyboard.KeyboardView
 
@@ -78,7 +79,12 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
                     onKeyboardModeChange = { mode -> keyboardMode = mode },
                     onKeyPress = { key -> handleKeyPress(key) },
                     onCandidateSelected = { candidate -> commitCandidate(candidate) },
-                    candidates = candidates
+                    candidates = candidates,
+                    quickCommandSuggestions = if (keyboardMode == KeyboardMode.COMMANDS) {
+                        CommandPalette.defaultQuickCommands
+                    } else {
+                        emptyList()
+                    }
                 )
             }
         }

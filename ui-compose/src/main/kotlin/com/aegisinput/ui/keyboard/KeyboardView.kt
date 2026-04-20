@@ -18,9 +18,19 @@ import com.aegisinput.ui.theme.AegisInputTheme
 
 enum class KeyboardMode {
     LATIN,
+    COMMANDS,
     PINYIN,
     ZHUYIN,
     SYMBOLS
+}
+
+object CommandPalette {
+    val defaultQuickCommands: List<String> = listOf(
+        "/help",
+        "/new",
+        "/search",
+        "/settings"
+    )
 }
 
 @Composable
@@ -31,13 +41,21 @@ fun KeyboardView(
     onKeyPress: (String) -> Unit,
     onCandidateSelected: (String) -> Unit,
     candidates: List<String>,
+    quickCommandSuggestions: List<String> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     var shiftEnabled by remember(keyboardMode) { mutableStateOf(false) }
+    val visibleCandidates = if (candidates.isNotEmpty()) {
+        candidates
+    } else if (keyboardMode == KeyboardMode.COMMANDS) {
+        quickCommandSuggestions
+    } else {
+        emptyList()
+    }
     val rows = KeyboardLayout.rowsFor(
         mode = keyboardMode,
         chineseMode = chineseMode,
-        uppercaseLatin = shiftEnabled && keyboardMode != KeyboardMode.ZHUYIN
+        uppercaseLatin = shiftEnabled && keyboardMode.supportsShift()
     )
 
     AegisInputTheme {
@@ -47,7 +65,7 @@ fun KeyboardView(
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
         ) {
             CandidateBar(
-                candidates = candidates,
+                candidates = visibleCandidates,
                 onCandidateSelected = onCandidateSelected
             )
 
@@ -63,12 +81,13 @@ fun KeyboardView(
                             onPress = { key ->
                                 when (key.code) {
                                     "MODE_LATIN" -> onKeyboardModeChange(KeyboardMode.LATIN)
+                                    "MODE_COMMANDS" -> onKeyboardModeChange(KeyboardMode.COMMANDS)
                                     "MODE_CHINESE" -> onKeyboardModeChange(chineseMode)
                                     "SYMBOLS" -> onKeyboardModeChange(KeyboardMode.SYMBOLS)
                                     "SHIFT" -> shiftEnabled = !shiftEnabled
                                     else -> {
                                         onKeyPress(key.code)
-                                        if (shiftEnabled && keyboardMode == KeyboardMode.LATIN) {
+                                        if (shiftEnabled && keyboardMode.supportsShift()) {
                                             shiftEnabled = false
                                         }
                                     }
@@ -81,4 +100,8 @@ fun KeyboardView(
             }
         }
     }
+}
+
+private fun KeyboardMode.supportsShift(): Boolean {
+    return this == KeyboardMode.LATIN || this == KeyboardMode.PINYIN
 }
