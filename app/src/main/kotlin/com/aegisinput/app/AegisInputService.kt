@@ -5,6 +5,9 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.OnBackPressedDispatcherOwner
+import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -13,7 +16,10 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
@@ -23,10 +29,13 @@ import com.aegisinput.engine.RimeSession
 import com.aegisinput.ui.keyboard.KeyboardMode
 import com.aegisinput.ui.keyboard.KeyboardView
 
-class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegistryOwner {
+class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegistryOwner,
+    ViewModelStoreOwner, OnBackPressedDispatcherOwner {
 
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
+    override val viewModelStore = ViewModelStore()
+    override val onBackPressedDispatcher = OnBackPressedDispatcher()
 
     override val lifecycle: Lifecycle get() = lifecycleRegistry
     override val savedStateRegistry: SavedStateRegistry
@@ -55,10 +64,13 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     }
 
     override fun onCreateInputView(): View {
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        moveLifecycleToResumed()
         val composeView = ComposeView(this).apply {
+            id = R.id.keyboard_compose_view
             setViewTreeLifecycleOwner(this@AegisInputService)
             setViewTreeSavedStateRegistryOwner(this@AegisInputService)
+            setViewTreeViewModelStoreOwner(this@AegisInputService)
+            setViewTreeOnBackPressedDispatcherOwner(this@AegisInputService)
             setContent {
                 KeyboardView(
                     keyboardMode = keyboardMode,
@@ -71,6 +83,16 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
             }
         }
         return composeView
+    }
+
+    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
+        moveLifecycleToResumed()
+    }
+
+    override fun onFinishInputView(finishingInput: Boolean) {
+        moveLifecycleToCreated()
+        super.onFinishInputView(finishingInput)
     }
 
     override fun onFinishInput() {
@@ -92,9 +114,30 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     }
 
     override fun onDestroy() {
+        moveLifecycleToCreated()
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        viewModelStore.clear()
         RimeBridge.shutdown()
         super.onDestroy()
+    }
+
+    private fun moveLifecycleToResumed() {
+        when (lifecycleRegistry.currentState) {
+            Lifecycle.State.CREATED -> lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+            Lifecycle.State.STARTED -> Unit
+            Lifecycle.State.RESUMED -> return
+            else -> return
+        }
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    }
+
+    private fun moveLifecycleToCreated() {
+        if (lifecycleRegistry.currentState == Lifecycle.State.RESUMED) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+        }
+        if (lifecycleRegistry.currentState == Lifecycle.State.STARTED) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        }
     }
 
     private fun handleKeyPress(key: String) {
