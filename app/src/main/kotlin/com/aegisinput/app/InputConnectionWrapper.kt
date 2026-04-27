@@ -51,6 +51,20 @@ class InputConnectionWrapper {
         inputConnection?.sendKeyEvent(event)
     }
 
+    fun performEnterAction() {
+        when (val behavior = ImeCompatibilityPolicy.resolveEnterKeyBehavior(editorInfo?.imeOptions)) {
+            is EnterKeyBehavior.PerformEditorAction -> {
+                if (inputConnection?.performEditorAction(behavior.actionId) == true) {
+                    return
+                }
+            }
+            EnterKeyBehavior.SendEnterKey -> Unit
+        }
+
+        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+        sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+    }
+
     fun getTextBeforeCursor(length: Int): CharSequence? {
         return inputConnection?.getTextBeforeCursor(length, 0)
     }

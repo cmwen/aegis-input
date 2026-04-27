@@ -5,6 +5,7 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
+import android.widget.Toast
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.OnBackPressedDispatcherOwner
 import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
@@ -47,21 +48,31 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     private val candidates = mutableStateListOf<String>()
     private var chineseMode by mutableStateOf(KeyboardMode.ZHUYIN)
     private var keyboardMode by mutableStateOf(KeyboardMode.ZHUYIN)
+    private var nativeEngineAvailable = false
+    private var nativeEngineUnavailableMessage: String? = null
+    private var hasShownNativeEngineUnavailableToast = false
 
     override fun onCreate() {
         super.onCreate()
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+        nativeEngineAvailable = RimeBridge.initialize(applicationContext)
+        nativeEngineUnavailableMessage = RimeBridge.unavailableMessage()
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
-        rimeSession?.let(RimeBridge::destroySession)
-        rimeSession = RimeBridge.createSession()
         inputConnectionWrapper.bind(currentInputConnection, attribute)
+        rimeSession?.let(RimeBridge::destroySession)
+        rimeSession = null
         chineseMode = resolveChineseMode(inputMethodManager.currentInputMethodSubtype)
-        keyboardMode = chineseMode
+        keyboardMode = if (nativeEngineAvailable) chineseMode else KeyboardMode.LATIN
         clearCompositionState(resetSession = false)
+        if (!nativeEngineAvailable) {
+            showNativeEngineUnavailableToast()
+            return
+        }
+        rimeSession = RimeBridge.createSession()
     }
 
     override fun onCreateInputView(): View {
@@ -76,7 +87,7 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
                 KeyboardView(
                     keyboardMode = keyboardMode,
                     chineseMode = chineseMode,
-                    onKeyboardModeChange = { mode -> keyboardMode = mode },
+                    onKeyboardModeChange = { mode -> handleKeyboardModeChange(mode) },
                     onKeyPress = { key -> handleKeyPress(key) },
                     onCandidateSelected = { candidate -> commitCandidate(candidate) },
                     candidates = candidates,
@@ -94,6 +105,14 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         moveLifecycleToResumed()
+    }
+
+    override fun onEvaluateFullscreenMode(): Boolean {
+        return ImeCompatibilityPolicy.shouldUseFullscreenMode()
+    }
+
+    override fun onUpdateExtractingVisibility(info: EditorInfo?) {
+        isExtractViewShown = false
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -114,7 +133,7 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     override fun onCurrentInputMethodSubtypeChanged(newSubtype: InputMethodSubtype?) {
         super.onCurrentInputMethodSubtypeChanged(newSubtype)
         chineseMode = resolveChineseMode(newSubtype)
-        if (keyboardMode.isChineseMode()) {
+        if (nativeEngineAvailable && keyboardMode.isChineseMode()) {
             keyboardMode = chineseMode
         }
     }
@@ -123,7 +142,9 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
         moveLifecycleToCreated()
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         viewModelStore.clear()
-        RimeBridge.shutdown()
+        if (nativeEngineAvailable) {
+            RimeBridge.shutdown()
+        }
         super.onDestroy()
     }
 
@@ -147,12 +168,12 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     }
 
     private fun handleKeyPress(key: String) {
-        val session = rimeSession ?: return
         val ic = inputConnectionWrapper
+        val session = rimeSession
 
         when {
             key == "BACKSPACE" -> {
-                if (keyboardMode.isChineseMode() && session.hasComposing()) {
+                if (keyboardMode.isChineseMode() && session?.hasComposing() == true) {
                     session.processKey("BackSpace")
                     syncSessionState(session)
                 } else {
@@ -160,17 +181,14 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
                 }
             }
             key == "ENTER" -> {
-                if (keyboardMode.isChineseMode() && session.hasComposing()) {
+                if (keyboardMode.isChineseMode() && session?.hasComposing() == true) {
                     val committed = session.commit()
                     if (committed.isNotEmpty()) {
                         ic.commitText(committed, 1)
                     }
                     clearCompositionState(resetSession = false)
                 } else {
-                    ic.sendKeyEvent(android.view.KeyEvent(
-                        android.view.KeyEvent.ACTION_DOWN,
-                        android.view.KeyEvent.KEYCODE_ENTER
-                    ))
+                    ic.performEnterAction()
                 }
             }
             key == "SPACE" -> {
@@ -182,13 +200,23 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
             }
             else -> {
                 if (keyboardMode.isChineseMode()) {
-                    session.processKey(normalizeKeyForChineseMode(key))
-                    syncSessionState(session)
+                    val activeSession = session ?: return
+                    activeSession.processKey(normalizeKeyForChineseMode(key))
+                    syncSessionState(activeSession)
                 } else {
                     ic.commitText(key, 1)
                 }
             }
         }
+    }
+
+    private fun handleKeyboardModeChange(mode: KeyboardMode) {
+        if (!nativeEngineAvailable && mode.isChineseMode()) {
+            keyboardMode = KeyboardMode.LATIN
+            showNativeEngineUnavailableToast()
+            return
+        }
+        keyboardMode = mode
     }
 
     private fun commitCandidate(candidate: String) {
@@ -227,5 +255,16 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
 
     private val inputMethodManager: InputMethodManager
         get() = getSystemService(InputMethodManager::class.java)
+
+    private fun showNativeEngineUnavailableToast() {
+        if (hasShownNativeEngineUnavailableToast) return
+        val detail = nativeEngineUnavailableMessage ?: getString(R.string.native_engine_unavailable_body)
+        Toast.makeText(
+            this,
+            getString(R.string.native_engine_unavailable_toast, detail),
+            Toast.LENGTH_LONG
+        ).show()
+        hasShownNativeEngineUnavailableToast = true
+    }
 
 }

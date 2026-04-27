@@ -13,6 +13,10 @@ add_library(aegisinput-engine SHARED
 
 find_library(log-lib log)
 
+target_link_options(aegisinput-engine PRIVATE
+    "LINKER:-z,max-page-size=16384"
+)
+
 target_link_libraries(aegisinput-engine
     ${log-lib}
     # ${RIME_ROOT}/lib/librime.so  # Uncomment when librime is available

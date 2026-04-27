@@ -34,8 +34,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.aegisinput.engine.RimeBridge
 import com.aegisinput.ui.keyboard.CommandPalette
 import com.aegisinput.ui.keyboard.KeyboardMode
 import com.aegisinput.ui.keyboard.KeyboardView
@@ -44,11 +46,13 @@ import com.aegisinput.ui.theme.AegisInputTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val nativeEngineWarningMessage = RimeBridge.unavailableMessage()
         setContent {
             AegisInputTheme {
                 AegisSetupScreen(
                     title = getString(R.string.launcher_title),
                     subtitle = getString(R.string.launcher_subtitle),
+                    nativeEngineWarningMessage = nativeEngineWarningMessage,
                     onOpenKeyboardSettings = {
                         startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
                     },
@@ -66,11 +70,13 @@ class MainActivity : ComponentActivity() {
 class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val nativeEngineWarningMessage = RimeBridge.unavailableMessage()
         setContent {
             AegisInputTheme {
                 AegisSetupScreen(
                     title = getString(R.string.settings_title),
                     subtitle = getString(R.string.settings_subtitle),
+                    nativeEngineWarningMessage = nativeEngineWarningMessage,
                     onOpenKeyboardSettings = {
                         startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
                     },
@@ -89,6 +95,7 @@ class SettingsActivity : ComponentActivity() {
 private fun AegisSetupScreen(
     title: String,
     subtitle: String,
+    nativeEngineWarningMessage: String?,
     onOpenKeyboardSettings: () -> Unit,
     onShowInputPicker: () -> Unit
 ) {
@@ -112,6 +119,36 @@ private fun AegisSetupScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+
+            nativeEngineWarningMessage?.let { message ->
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.native_engine_unavailable_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            text = stringResource(R.string.native_engine_unavailable_body),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
             }
 
             Card(
