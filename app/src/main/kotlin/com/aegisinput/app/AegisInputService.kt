@@ -10,6 +10,7 @@ import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.OnBackPressedDispatcherOwner
 import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +55,7 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
 
     override fun onCreate() {
         super.onCreate()
+        savedStateRegistryController.performAttach()
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         nativeEngineAvailable = RimeBridge.initialize(applicationContext)
@@ -83,6 +85,9 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
             setViewTreeSavedStateRegistryOwner(this@AegisInputService)
             setViewTreeViewModelStoreOwner(this@AegisInputService)
             setViewTreeOnBackPressedDispatcherOwner(this@AegisInputService)
+            setViewCompositionStrategy(
+                ViewCompositionStrategy.DisposeOnLifecycleDestroyed(lifecycle)
+            )
             setContent {
                 KeyboardView(
                     keyboardMode = keyboardMode,
