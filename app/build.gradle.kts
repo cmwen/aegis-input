@@ -21,8 +21,8 @@ android {
         applicationId = "com.aegisinput.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.1.8"
+        versionCode = 9
+        versionName = "0.1.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

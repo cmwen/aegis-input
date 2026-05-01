@@ -44,6 +44,8 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     override val savedStateRegistry: SavedStateRegistry
         get() = savedStateRegistryController.savedStateRegistry
 
+    private var keyboardComposeView: ComposeView? = null
+    private var inputViewContentBound = false
     private var rimeSession: RimeSession? = null
     private val inputConnectionWrapper = InputConnectionWrapper()
     private val candidates = mutableStateListOf<String>()
@@ -68,7 +70,11 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
         rimeSession?.let(RimeBridge::destroySession)
         rimeSession = null
         chineseMode = resolveChineseMode(inputMethodManager.currentInputMethodSubtype)
-        keyboardMode = if (nativeEngineAvailable) chineseMode else KeyboardMode.LATIN
+        keyboardMode = ImeCompatibilityPolicy.resolveInitialKeyboardMode(
+            editorInfo = attribute,
+            chineseMode = chineseMode,
+            nativeEngineAvailable = nativeEngineAvailable
+        )
         clearCompositionState(resetSession = false)
         if (!nativeEngineAvailable) {
             showNativeEngineUnavailableToast()
@@ -78,33 +84,28 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     }
 
     override fun onCreateInputView(): View {
-        moveLifecycleToResumed()
-        val composeView = ComposeView(this).apply {
+        return keyboardComposeView ?: ComposeView(this).apply {
             id = R.id.keyboard_compose_view
             setViewTreeLifecycleOwner(this@AegisInputService)
             setViewTreeSavedStateRegistryOwner(this@AegisInputService)
             setViewTreeViewModelStoreOwner(this@AegisInputService)
             setViewTreeOnBackPressedDispatcherOwner(this@AegisInputService)
-            setViewCompositionStrategy(
-                ViewCompositionStrategy.DisposeOnLifecycleDestroyed(lifecycle)
-            )
-            setContent {
-                KeyboardView(
-                    keyboardMode = keyboardMode,
-                    chineseMode = chineseMode,
-                    onKeyboardModeChange = { mode -> handleKeyboardModeChange(mode) },
-                    onKeyPress = { key -> handleKeyPress(key) },
-                    onCandidateSelected = { candidate -> commitCandidate(candidate) },
-                    candidates = candidates,
-                    quickCommandSuggestions = if (keyboardMode == KeyboardMode.COMMANDS) {
-                        CommandPalette.defaultQuickCommands
-                    } else {
-                        emptyList()
-                    }
-                )
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+            addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {
+                    bindInputViewContent(this@apply)
+                }
+
+                override fun onViewDetachedFromWindow(v: View) {
+                    inputViewContentBound = false
+                }
+            })
+            if (isAttachedToWindow) {
+                bindInputViewContent(this)
             }
+        }.also { composeView ->
+            keyboardComposeView = composeView
         }
-        return composeView
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -145,6 +146,9 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
 
     override fun onDestroy() {
         moveLifecycleToCreated()
+        keyboardComposeView?.disposeComposition()
+        keyboardComposeView = null
+        inputViewContentBound = false
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         viewModelStore.clear()
         if (nativeEngineAvailable) {
@@ -169,6 +173,26 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
         }
         if (lifecycleRegistry.currentState == Lifecycle.State.STARTED) {
             lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        }
+    }
+
+    private fun bindInputViewContent(composeView: ComposeView) {
+        if (inputViewContentBound) return
+        inputViewContentBound = true
+        composeView.setContent {
+            KeyboardView(
+                keyboardMode = keyboardMode,
+                chineseMode = chineseMode,
+                onKeyboardModeChange = { mode -> handleKeyboardModeChange(mode) },
+                onKeyPress = { key -> handleKeyPress(key) },
+                onCandidateSelected = { candidate -> commitCandidate(candidate) },
+                candidates = candidates,
+                quickCommandSuggestions = if (keyboardMode == KeyboardMode.COMMANDS) {
+                    CommandPalette.defaultQuickCommands
+                } else {
+                    emptyList()
+                }
+            )
         }
     }
 
