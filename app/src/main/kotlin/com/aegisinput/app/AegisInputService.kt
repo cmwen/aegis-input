@@ -121,6 +121,13 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
         return ImeCompatibilityPolicy.shouldShowInputView()
     }
 
+    override fun onShowInputRequested(flags: Int, configChange: Boolean): Boolean {
+        return ImeCompatibilityPolicy.shouldShowInputView(
+            requestFlags = flags,
+            configChange = configChange
+        )
+    }
+
     override fun onUpdateExtractingVisibility(info: EditorInfo?) {
         isExtractViewShown = false
     }

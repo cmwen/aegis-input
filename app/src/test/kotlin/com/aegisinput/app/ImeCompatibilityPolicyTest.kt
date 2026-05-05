@@ -1,10 +1,12 @@
 package com.aegisinput.app
 
 import android.text.InputType
+import android.view.inputmethod.InputMethod
 import android.view.inputmethod.EditorInfo
 import com.aegisinput.ui.keyboard.KeyboardMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ImeCompatibilityPolicyTest {
@@ -17,6 +19,26 @@ class ImeCompatibilityPolicyTest {
     @Test
     fun inputViewAlwaysShowsForImeCompatibility() {
         assertEquals(true, ImeCompatibilityPolicy.shouldShowInputView())
+    }
+
+    @Test
+    fun explicitShowRequestsAlwaysKeepInputViewEligible() {
+        assertTrue(
+            ImeCompatibilityPolicy.shouldShowInputView(
+                requestFlags = InputMethod.SHOW_EXPLICIT,
+                configChange = false
+            )
+        )
+    }
+
+    @Test
+    fun configChangesKeepInputViewEligible() {
+        assertTrue(
+            ImeCompatibilityPolicy.shouldShowInputView(
+                requestFlags = 0,
+                configChange = true
+            )
+        )
     }
 
     @Test

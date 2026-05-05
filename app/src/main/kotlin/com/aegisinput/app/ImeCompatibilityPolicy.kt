@@ -10,6 +10,15 @@ internal object ImeCompatibilityPolicy {
 
     fun shouldShowInputView(): Boolean = true
 
+    fun shouldShowInputView(requestFlags: Int, configChange: Boolean): Boolean {
+        if (!shouldShowInputView()) return false
+
+        // Stay eligible for soft-input display even when Android reports desktop or
+        // hardware-keyboard capabilities. Android 16 devices can otherwise suppress
+        // the IME window after the user explicitly switches to this keyboard.
+        return true
+    }
+
     fun resolveInitialKeyboardMode(
         editorInfo: EditorInfo?,
         chineseMode: KeyboardMode,
