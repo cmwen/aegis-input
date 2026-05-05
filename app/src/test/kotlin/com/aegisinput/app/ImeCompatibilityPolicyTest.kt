@@ -15,6 +15,11 @@ class ImeCompatibilityPolicyTest {
     }
 
     @Test
+    fun inputViewAlwaysShowsForImeCompatibility() {
+        assertEquals(true, ImeCompatibilityPolicy.shouldShowInputView())
+    }
+
+    @Test
     fun chineseModeStaysEnabledForGeneralTextFields() {
         val editorInfo = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT

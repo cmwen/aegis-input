@@ -117,6 +117,10 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
         return ImeCompatibilityPolicy.shouldUseFullscreenMode()
     }
 
+    override fun onEvaluateInputViewShown(): Boolean {
+        return ImeCompatibilityPolicy.shouldShowInputView()
+    }
+
     override fun onUpdateExtractingVisibility(info: EditorInfo?) {
         isExtractViewShown = false
     }

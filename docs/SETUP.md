@@ -112,6 +112,8 @@ After installing the APK on your device:
 3. Return to the app and tap **Switch keyboard**, or open any text field and choose AegisInput from the system keyboard picker.
 4. Use the built-in demo screen to verify Zhuyin, Pinyin, Latin, and symbol input before typing in another app.
 
+Android 16 compatibility note: AegisInput intentionally keeps the soft input view eligible to appear even when the device reports desktop or hardware-keyboard capabilities, so selecting the IME from the system picker still brings up the on-screen keyboard.
+
 ## Development Tips
 
 - **Compose Preview** — The keyboard UI components include `@Preview` annotations. Use Android Studio's Compose Preview to iterate on layout and theming without deploying to a device.

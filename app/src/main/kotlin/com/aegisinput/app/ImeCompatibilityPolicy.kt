@@ -8,6 +8,8 @@ internal object ImeCompatibilityPolicy {
 
     fun shouldUseFullscreenMode(): Boolean = false
 
+    fun shouldShowInputView(): Boolean = true
+
     fun resolveInitialKeyboardMode(
         editorInfo: EditorInfo?,
         chineseMode: KeyboardMode,
