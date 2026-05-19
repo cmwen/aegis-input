@@ -21,8 +21,8 @@ android {
         applicationId = "com.aegisinput.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 11
-        versionName = "0.1.11"
+        versionCode = 12
+        versionName = "0.1.12"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -69,6 +69,8 @@ android {
             useLegacyPackaging = false
         }
     }
+
+    ndkVersion = "28.2.13676358"
 }
 
 dependencies {

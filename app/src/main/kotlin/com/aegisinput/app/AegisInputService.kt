@@ -84,12 +84,8 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     }
 
     override fun onCreateInputView(): View {
-        return keyboardComposeView ?: ComposeView(this).apply {
+        val composeView = keyboardComposeView ?: ComposeView(this).apply {
             id = R.id.keyboard_compose_view
-            setViewTreeLifecycleOwner(this@AegisInputService)
-            setViewTreeSavedStateRegistryOwner(this@AegisInputService)
-            setViewTreeViewModelStoreOwner(this@AegisInputService)
-            setViewTreeOnBackPressedDispatcherOwner(this@AegisInputService)
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
                 override fun onViewAttachedToWindow(v: View) {
@@ -103,9 +99,18 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
             if (isAttachedToWindow) {
                 bindInputViewContent(this)
             }
-        }.also { composeView ->
-            keyboardComposeView = composeView
+        }.also { cView ->
+            keyboardComposeView = cView
         }
+
+        window?.window?.decorView?.let { decorView ->
+            decorView.setViewTreeLifecycleOwner(this@AegisInputService)
+            decorView.setViewTreeSavedStateRegistryOwner(this@AegisInputService)
+            decorView.setViewTreeViewModelStoreOwner(this@AegisInputService)
+            decorView.setViewTreeOnBackPressedDispatcherOwner(this@AegisInputService)
+        }
+
+        return composeView
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
