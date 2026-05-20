@@ -29,6 +29,7 @@ object RimeBridge {
     fun initialize(context: Context): Boolean {
         if (!ensureNativeLibraryLoaded()) return false
         if (initialized) return true
+        copyAssetsToFilesDir(context)
         val dataDir = context.filesDir.resolve("rime").absolutePath
         val sharedDir = context.getExternalFilesDir(null)?.resolve("rime")?.absolutePath ?: dataDir
         return try {
@@ -38,6 +39,28 @@ object RimeBridge {
         } catch (error: UnsatisfiedLinkError) {
             nativeLibraryErrorMessage = error.message ?: "Unable to initialize the native AegisInput engine."
             false
+        }
+    }
+
+    private fun copyAssetsToFilesDir(context: Context) {
+        val rimeDir = context.filesDir.resolve("rime")
+        if (!rimeDir.exists()) {
+            rimeDir.mkdirs()
+        }
+        try {
+            val assetManager = context.assets
+            val files = assetManager.list("rime") ?: return
+            for (fileName in files) {
+                val assetPath = "rime/$fileName"
+                val destFile = rimeDir.resolve(fileName)
+                assetManager.open(assetPath).use { input ->
+                    destFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("AegisInput-RimeBridge", "Failed to copy RIME assets", e)
         }
     }
 

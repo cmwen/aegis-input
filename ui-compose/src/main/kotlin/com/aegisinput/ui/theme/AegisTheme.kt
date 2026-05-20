@@ -1,5 +1,6 @@
 package com.aegisinput.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -7,28 +8,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val KeyboardLight = lightColorScheme(
-    primary = Color(0xFF1A73E8),
+    primary = Color(0xFF2563EB),
     onPrimary = Color.White,
-    surface = Color(0xFFECEFF1),
-    onSurface = Color(0xFF202124),
-    surfaceVariant = Color(0xFFDFE1E5),
-    onSurfaceVariant = Color(0xFF5F6368),
-    outline = Color(0xFFDADCE0),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF1F2937),
+    surfaceVariant = Color(0xFFF3F4F6),
+    onSurfaceVariant = Color(0xFF4B5563),
+    outline = Color(0xFFE5E7EB),
 )
 
 private val KeyboardDark = darkColorScheme(
-    primary = Color(0xFF8AB4F8),
-    onPrimary = Color(0xFF202124),
-    surface = Color(0xFF303134),
-    onSurface = Color(0xFFE8EAED),
-    surfaceVariant = Color(0xFF3C4043),
-    onSurfaceVariant = Color(0xFF9AA0A6),
-    outline = Color(0xFF5F6368),
+    primary = Color(0xFF3B82F6),
+    onPrimary = Color.White,
+    surface = Color(0xFF1F2937),
+    onSurface = Color(0xFFF9FAFB),
+    surfaceVariant = Color(0xFF111827),
+    onSurfaceVariant = Color(0xFF9CA3AF),
+    outline = Color(0xFF374151),
 )
 
 @Composable
 fun AegisInputTheme(
-    darkTheme: Boolean = false,
+    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) KeyboardDark else KeyboardLight

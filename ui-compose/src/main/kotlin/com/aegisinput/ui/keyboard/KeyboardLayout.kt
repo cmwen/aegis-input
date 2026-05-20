@@ -20,13 +20,14 @@ object KeyboardLayout {
     fun rowsFor(
         mode: KeyboardMode,
         chineseMode: KeyboardMode,
-        uppercaseLatin: Boolean
+        uppercaseLatin: Boolean,
+        zhuyinPage: Int = 1
     ): List<List<KeyDef>> {
         return when (mode) {
             KeyboardMode.LATIN -> latinRows(chineseMode, uppercaseLatin)
             KeyboardMode.COMMANDS -> commandRows(chineseMode)
             KeyboardMode.PINYIN -> pinyinRows(uppercaseLatin)
-            KeyboardMode.ZHUYIN -> zhuyinRows()
+            KeyboardMode.ZHUYIN -> if (zhuyinPage == 2) zhuyinPage2Rows() else zhuyinPage1Rows()
             KeyboardMode.SYMBOLS -> symbolRows(chineseMode)
         }
     }
@@ -129,29 +130,45 @@ object KeyboardLayout {
         )
     )
 
-    private fun zhuyinRows(): List<List<KeyDef>> = listOf(
+    private fun zhuyinPage1Rows(): List<List<KeyDef>> = listOf(
         listOf(
-            KeyDef("ㄅ"), KeyDef("ㄉ"), KeyDef("ˇ"), KeyDef("ˋ"), KeyDef("ㄓ"),
-            KeyDef("ˊ"), KeyDef("˙"), KeyDef("ㄚ"), KeyDef("ㄞ"), KeyDef("ㄢ")
+            KeyDef("ㄅ"), KeyDef("ㄆ"), KeyDef("ㄇ"), KeyDef("ㄈ"), KeyDef("ㄉ"), KeyDef("ㄊ"), KeyDef("ㄋ")
         ),
         listOf(
-            KeyDef("ㄆ"), KeyDef("ㄊ"), KeyDef("ㄍ"), KeyDef("ㄐ"), KeyDef("ㄔ"),
-            KeyDef("ㄗ"), KeyDef("ㄧ"), KeyDef("ㄛ"), KeyDef("ㄟ"), KeyDef("ㄣ")
+            KeyDef("ㄌ"), KeyDef("ㄍ"), KeyDef("ㄎ"), KeyDef("ㄏ"), KeyDef("ㄐ"), KeyDef("ㄑ"), KeyDef("ㄒ")
         ),
         listOf(
-            KeyDef("ㄇ"), KeyDef("ㄋ"), KeyDef("ㄎ"), KeyDef("ㄑ"), KeyDef("ㄕ"),
-            KeyDef("ㄘ"), KeyDef("ㄨ"), KeyDef("ㄜ"), KeyDef("ㄠ"), KeyDef("ㄤ")
+            KeyDef("ㄓ/ㄗ", "ㄓ_ㄗ"), KeyDef("ㄔ/ㄘ", "ㄔ_ㄘ"), KeyDef("ㄕ/ㄙ", "ㄕ_ㄙ"), KeyDef("ㄖ"),
+            KeyDef("ㄧ"), KeyDef("ㄨ"), KeyDef("ㄩ")
         ),
         listOf(
-            KeyDef("ㄈ"), KeyDef("ㄌ"), KeyDef("ㄏ"), KeyDef("ㄒ"), KeyDef("ㄖ"),
-            KeyDef("ㄙ"), KeyDef("ㄩ"), KeyDef("ㄝ"), KeyDef("ㄡ"), KeyDef("ㄥ")
+            KeyDef("ABC", "MODE_LATIN", 1.1f, KeyType.MODIFIER),
+            KeyDef("⌫", "BACKSPACE", 1.1f, KeyType.BACKSPACE),
+            KeyDef(" ", "SPACE", 2.4f, KeyType.SPACE),
+            KeyDef("⇋", "TOGGLE_PAGE", 1.1f, KeyType.MODIFIER),
+            KeyDef("↵", "ENTER", 1.3f, KeyType.ENTER)
+        )
+    )
+
+    private fun zhuyinPage2Rows(): List<List<KeyDef>> = listOf(
+        listOf(
+            KeyDef("ㄚ"), KeyDef("ㄛ"), KeyDef("ㄜ"), KeyDef("ㄝ"), KeyDef("ㄞ"), KeyDef("ㄟ"), KeyDef("ㄠ")
         ),
         listOf(
-            KeyDef("ABC", "MODE_LATIN", 1.5f, KeyType.MODIFIER),
-            KeyDef("123", "SYMBOLS", 1.2f, KeyType.MODIFIER),
-            KeyDef(" ", "SPACE", 3f, KeyType.SPACE),
-            KeyDef("⌫", "BACKSPACE", 1.5f, KeyType.BACKSPACE),
-            KeyDef("↵", "ENTER", 1.5f, KeyType.ENTER)
+            KeyDef("ㄡ"), KeyDef("ㄦ"), KeyDef("ㄢ/ㄤ", "ㄢ_ㄤ"), KeyDef("ㄣ/ㄥ", "ㄣ_ㄥ"),
+            KeyDef("ㄧㄝ", "ㄧㄝ"), KeyDef("ㄨㄛ", "ㄨㄛ"), KeyDef("ˊ")
+        ),
+        listOf(
+            KeyDef("ㄧㄢ/ㄤ", "ㄧㄢ_ㄤ"), KeyDef("ㄨㄢ/ㄤ", "ㄨㄢ_ㄤ"),
+            KeyDef("ㄧㄣ/ㄥ", "ㄧㄣ_ㄥ"), KeyDef("ㄨㄣ/ㄥ", "ㄨㄣ_ㄥ"),
+            KeyDef("ˇ"), KeyDef("ˋ"), KeyDef("˙")
+        ),
+        listOf(
+            KeyDef("ABC", "MODE_LATIN", 1.1f, KeyType.MODIFIER),
+            KeyDef("⌫", "BACKSPACE", 1.1f, KeyType.BACKSPACE),
+            KeyDef(" ", "SPACE", 2.4f, KeyType.SPACE),
+            KeyDef("⇋", "TOGGLE_PAGE", 1.1f, KeyType.MODIFIER),
+            KeyDef("↵", "ENTER", 1.3f, KeyType.ENTER)
         )
     )
 

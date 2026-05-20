@@ -51,6 +51,7 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     private val candidates = mutableStateListOf<String>()
     private var chineseMode by mutableStateOf(KeyboardMode.ZHUYIN)
     private var keyboardMode by mutableStateOf(KeyboardMode.ZHUYIN)
+    private var composingText by mutableStateOf("")
     private var nativeEngineAvailable = false
     private var nativeEngineUnavailableMessage: String? = null
     private var hasShownNativeEngineUnavailableToast = false
@@ -199,6 +200,7 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
             KeyboardView(
                 keyboardMode = keyboardMode,
                 chineseMode = chineseMode,
+                composingText = composingText,
                 onKeyboardModeChange = { mode -> handleKeyboardModeChange(mode) },
                 onKeyPress = { key -> handleKeyPress(key) },
                 onCandidateSelected = { candidate -> commitCandidate(candidate) },
@@ -246,12 +248,79 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
             else -> {
                 if (keyboardMode.isChineseMode()) {
                     val activeSession = session ?: return
-                    activeSession.processKey(normalizeKeyForChineseMode(key))
+                    if (keyboardMode == KeyboardMode.ZHUYIN) {
+                        processZhuyinKey(activeSession, key)
+                    } else {
+                        activeSession.processKey(normalizeKeyForChineseMode(key))
+                    }
                     syncSessionState(activeSession)
                 } else {
                     ic.commitText(key, 1)
                 }
             }
+        }
+    }
+
+    private fun processZhuyinKey(session: RimeSession, key: String) {
+        when (key) {
+            "ㄓ_ㄗ" -> session.processKey("5")
+            "ㄔ_ㄘ" -> session.processKey("t")
+            "ㄕ_ㄙ" -> session.processKey("g")
+            "ㄢ_ㄤ" -> session.processKey("0")
+            "ㄣ_ㄥ" -> session.processKey("p")
+            "ㄧㄝ" -> {
+                session.processKey("u")
+                session.processKey(",")
+            }
+            "ㄨㄛ" -> {
+                session.processKey("j")
+                session.processKey("i")
+            }
+            "ㄧㄢ_ㄤ" -> {
+                session.processKey("u")
+                session.processKey("0")
+            }
+            "ㄨㄢ_ㄤ" -> {
+                session.processKey("j")
+                session.processKey("0")
+            }
+            "ㄧㄣ_ㄥ" -> {
+                session.processKey("u")
+                session.processKey("p")
+            }
+            "ㄨㄣ_ㄥ" -> {
+                session.processKey("j")
+                session.processKey("p")
+            }
+            "ㄅ" -> session.processKey("1")
+            "ㄉ" -> session.processKey("2")
+            "ˇ" -> session.processKey("3")
+            "ˋ" -> session.processKey("4")
+            "ˊ" -> session.processKey("6")
+            "˙" -> session.processKey("7")
+            "ㄚ" -> session.processKey("8")
+            "ㄞ" -> session.processKey("9")
+            "ㄆ" -> session.processKey("q")
+            "ㄊ" -> session.processKey("w")
+            "ㄍ" -> session.processKey("e")
+            "ㄐ" -> session.processKey("r")
+            "ㄧ" -> session.processKey("u")
+            "ㄛ" -> session.processKey("i")
+            "ㄟ" -> session.processKey("o")
+            "ㄇ" -> session.processKey("a")
+            "ㄋ" -> session.processKey("s")
+            "ㄎ" -> session.processKey("d")
+            "ㄑ" -> session.processKey("f")
+            "ㄨ" -> session.processKey("j")
+            "ㄜ" -> session.processKey("k")
+            "ㄠ" -> session.processKey("l")
+            "ㄈ" -> session.processKey("z")
+            "ㄌ" -> session.processKey("x")
+            "ㄏ" -> session.processKey("c")
+            "ㄒ" -> session.processKey("v")
+            "ㄖ" -> session.processKey("b")
+            "ㄩ" -> session.processKey("m")
+            else -> session.processKey(normalizeKeyForChineseMode(key))
         }
     }
 
@@ -270,8 +339,10 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     }
 
     private fun syncSessionState(session: RimeSession) {
-        if (session.hasComposing()) {
-            inputConnectionWrapper.setComposingText(session.composingText, 1)
+        val text = session.composingText
+        composingText = text
+        if (text.isNotEmpty()) {
+            inputConnectionWrapper.setComposingText(text, 1)
         } else {
             inputConnectionWrapper.finishComposingText()
         }
@@ -284,11 +355,12 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
             rimeSession?.reset()
         }
         inputConnectionWrapper.finishComposingText()
+        composingText = ""
         candidates.clear()
     }
 
     private fun normalizeKeyForChineseMode(key: String): String {
-        return if (chineseMode == KeyboardMode.PINYIN) key.lowercase() else key
+        return if (chineseMode == KeyboardMode.PINYIN || chineseMode == KeyboardMode.ZHUYIN) key.lowercase() else key
     }
 
     private fun resolveChineseMode(subtype: InputMethodSubtype?): KeyboardMode {

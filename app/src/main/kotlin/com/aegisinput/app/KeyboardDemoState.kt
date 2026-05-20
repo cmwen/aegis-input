@@ -57,10 +57,17 @@ internal fun KeyboardDemoState.handleKeyPress(key: String): KeyboardDemoState {
 
         else -> {
             if (keyboardMode.isChineseMode()) {
-                val normalizedKey = if (chineseMode == KeyboardMode.PINYIN) {
-                    key.lowercase()
-                } else {
-                    key
+                val normalizedKey = when (key) {
+                    "ㄓ_ㄗ" -> "ㄓ"
+                    "ㄔ_ㄘ" -> "ㄔ"
+                    "ㄕ_ㄙ" -> "ㄕ"
+                    "ㄢ_ㄤ" -> "ㄢ"
+                    "ㄣ_ㄥ" -> "ㄣ"
+                    "ㄧㄢ_ㄤ" -> "ㄧㄢ"
+                    "ㄨㄢ_ㄤ" -> "ㄨㄢ"
+                    "ㄧㄣ_ㄥ" -> "ㄧㄣ"
+                    "ㄨㄣ_ㄥ" -> "ㄨㄣ"
+                    else -> if (chineseMode.isChineseMode()) key.lowercase() else key
                 }
                 updateComposition(composingText + normalizedKey)
             } else {
