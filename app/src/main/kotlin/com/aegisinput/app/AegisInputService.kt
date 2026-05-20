@@ -209,6 +209,10 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
                     CommandPalette.defaultQuickCommands
                 } else {
                     emptyList()
+                },
+                onHideKeyboard = { requestHideSelf(0) },
+                onSwitchKeyboard = {
+                    inputMethodManager.showInputMethodPicker()
                 }
             )
         }
