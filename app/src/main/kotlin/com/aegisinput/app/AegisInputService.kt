@@ -203,7 +203,7 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
                 composingText = composingText,
                 onKeyboardModeChange = { mode -> handleKeyboardModeChange(mode) },
                 onKeyPress = { key -> handleKeyPress(key) },
-                onCandidateSelected = { candidate -> commitCandidate(candidate) },
+                onCandidateSelected = { index, candidate -> commitCandidate(index, candidate) },
                 candidates = candidates,
                 quickCommandSuggestions = if (keyboardMode == KeyboardMode.COMMANDS) {
                     CommandPalette.defaultQuickCommands
@@ -244,7 +244,7 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
             }
             key == "SPACE" -> {
                 if (keyboardMode.isChineseMode() && candidates.isNotEmpty()) {
-                    commitCandidate(candidates.first())
+                    commitCandidate(0, candidates.first())
                 } else {
                     ic.commitText(" ", 1)
                 }
@@ -337,7 +337,21 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
         keyboardMode = mode
     }
 
-    private fun commitCandidate(candidate: String) {
+    private fun commitCandidate(index: Int, candidate: String) {
+        if (keyboardMode.isChineseMode()) {
+            val session = rimeSession
+            if (session != null && session.hasComposing()) {
+                val committedText = session.selectCandidate(index)
+                if (committedText.isNotEmpty()) {
+                    inputConnectionWrapper.commitText(committedText, 1)
+                } else if (!session.hasComposing()) {
+                    inputConnectionWrapper.commitText(candidate, 1)
+                }
+                syncSessionState(session)
+                return
+            }
+        }
+
         inputConnectionWrapper.commitText(candidate, 1)
         clearCompositionState()
     }

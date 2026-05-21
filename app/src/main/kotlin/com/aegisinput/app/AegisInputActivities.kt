@@ -290,7 +290,9 @@ private fun KeyboardDemoCard() {
                 chineseMode = demoState.chineseMode,
                 onKeyboardModeChange = { demoState = demoState.setKeyboardMode(it) },
                 onKeyPress = { key -> demoState = demoState.handleKeyPress(key) },
-                onCandidateSelected = { candidate -> demoState = demoState.commitCandidate(candidate) },
+                onCandidateSelected = { _, candidate ->
+                    demoState = demoState.commitCandidate(candidate)
+                },
                 candidates = demoState.candidates,
                 quickCommandSuggestions = if (demoState.keyboardMode == KeyboardMode.COMMANDS) {
                     CommandPalette.defaultQuickCommands

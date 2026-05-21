@@ -256,6 +256,23 @@ Java_com_aegisinput_engine_RimeBridge_nativeCommitComposition(JNIEnv *env, jobje
     return env->NewStringUTF(committed.c_str());
 }
 
+JNIEXPORT jstring JNICALL
+Java_com_aegisinput_engine_RimeBridge_nativeSelectCandidate(JNIEnv *env, jobject thiz,
+                                                            jlong session_id, jint index) {
+    auto it = sessions.find(session_id);
+    if (it == sessions.end()) return env->NewStringUTF("");
+
+    const auto candidateIndex = static_cast<size_t>(index);
+    if (index < 0 || candidateIndex >= it->second.candidates.size()) {
+        return env->NewStringUTF("");
+    }
+
+    std::string committed = it->second.candidates[candidateIndex];
+    it->second.composing.clear();
+    it->second.candidates.clear();
+    return env->NewStringUTF(committed.c_str());
+}
+
 JNIEXPORT void JNICALL
 Java_com_aegisinput_engine_RimeBridge_nativeClearComposition(JNIEnv *env, jobject thiz,
                                                              jlong session_id) {

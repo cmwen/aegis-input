@@ -4,12 +4,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Divider
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,10 +24,12 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun CandidateBar(
     candidates: List<String>,
-    onCandidateSelected: (String) -> Unit,
+    onCandidateSelected: (Int, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (candidates.isEmpty()) return
+
+    val scrollState = rememberScrollState()
 
     Surface(
         color = MaterialTheme.colorScheme.surface,
@@ -35,16 +38,18 @@ fun CandidateBar(
             .fillMaxWidth()
             .height(44.dp)
     ) {
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 8.dp),
+        Row(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(scrollState)
+                .padding(PaddingValues(horizontal = 8.dp))
         ) {
-            items(candidates) { candidate ->
+            candidates.forEachIndexed { index, candidate ->
                 CandidateChip(
                     text = candidate,
-                    onClick = { onCandidateSelected(candidate) }
+                    onClick = { onCandidateSelected(index, candidate) }
                 )
             }
         }
@@ -60,6 +65,7 @@ private fun CandidateChip(
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
+            .wrapContentWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp)
             .clickable(onClick = onClick)
     ) {

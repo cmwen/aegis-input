@@ -37,6 +37,10 @@ JNIEXPORT jstring JNICALL
 Java_com_aegisinput_engine_RimeBridge_nativeCommitComposition(JNIEnv *env, jobject thiz,
                                                               jlong session_id);
 
+JNIEXPORT jstring JNICALL
+Java_com_aegisinput_engine_RimeBridge_nativeSelectCandidate(JNIEnv *env, jobject thiz,
+                                                            jlong session_id, jint index);
+
 JNIEXPORT void JNICALL
 Java_com_aegisinput_engine_RimeBridge_nativeClearComposition(JNIEnv *env, jobject thiz,
                                                              jlong session_id);

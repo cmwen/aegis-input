@@ -22,6 +22,10 @@ class RimeSession(val id: Long) {
         return RimeBridge.commitComposition(id)
     }
 
+    fun selectCandidate(index: Int): String {
+        return RimeBridge.selectCandidate(id, index)
+    }
+
     fun reset() {
         RimeBridge.resetSession(id)
     }

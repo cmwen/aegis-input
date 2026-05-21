@@ -63,7 +63,7 @@ fun KeyboardView(
     chineseMode: KeyboardMode,
     onKeyboardModeChange: (KeyboardMode) -> Unit,
     onKeyPress: (String) -> Unit,
-    onCandidateSelected: (String) -> Unit,
+    onCandidateSelected: (Int, String) -> Unit,
     candidates: List<String>,
     composingText: String = "",
     quickCommandSuggestions: List<String> = emptyList(),

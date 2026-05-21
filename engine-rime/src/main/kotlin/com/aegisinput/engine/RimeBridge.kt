@@ -102,6 +102,11 @@ object RimeBridge {
         return nativeCommitComposition(sessionId)
     }
 
+    fun selectCandidate(sessionId: Long, index: Int): String {
+        ensureReady()
+        return nativeSelectCandidate(sessionId, index)
+    }
+
     fun resetSession(sessionId: Long) {
         ensureReady()
         nativeClearComposition(sessionId)
@@ -145,5 +150,6 @@ object RimeBridge {
     private external fun nativeGetComposingText(sessionId: Long): String
     private external fun nativeGetCandidates(sessionId: Long): Array<String>
     private external fun nativeCommitComposition(sessionId: Long): String
+    private external fun nativeSelectCandidate(sessionId: Long, index: Int): String
     private external fun nativeClearComposition(sessionId: Long)
 }
