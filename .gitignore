@@ -4,6 +4,7 @@
 /.idea/
 .DS_Store
 /build
+*/build
 /captures
 .externalNativeBuild
 .cxx
@@ -19,3 +20,4 @@ out/
 *.bak
 *.swp
 *~
+.antigravitycli/
