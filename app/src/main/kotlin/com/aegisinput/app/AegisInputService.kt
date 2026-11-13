@@ -49,9 +49,13 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     private var rimeSession: RimeSession? = null
     private val inputConnectionWrapper = InputConnectionWrapper()
     private val candidates = mutableStateListOf<String>()
-    private var chineseMode by mutableStateOf(KeyboardMode.ZHUYIN)
-    private var keyboardMode by mutableStateOf(KeyboardMode.ZHUYIN)
+    private var chineseMode by mutableStateOf(KeyboardMode.PINYIN)
+    private var keyboardMode by mutableStateOf(KeyboardMode.PINYIN)
     private var composingText by mutableStateOf("")
+    private var chineseEnabled by mutableStateOf(true)
+    private var enterLabel by mutableStateOf("↵")
+    private var preferredMode = KeyboardMode.PINYIN
+    private var typingController: TypingController? = null
     private var nativeEngineAvailable = false
     private var nativeEngineUnavailableMessage: String? = null
     private var hasShownNativeEngineUnavailableToast = false
@@ -70,18 +74,30 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
         inputConnectionWrapper.bind(currentInputConnection, attribute)
         rimeSession?.let(RimeBridge::destroySession)
         rimeSession = null
-        chineseMode = resolveChineseMode(inputMethodManager.currentInputMethodSubtype)
+        chineseMode = KeyboardMode.PINYIN
+        chineseEnabled = !ImeCompatibilityPolicy.isSensitiveField(attribute?.inputType ?: 0)
+        enterLabel = ImeCompatibilityPolicy.enterLabel(attribute?.imeOptions)
         keyboardMode = ImeCompatibilityPolicy.resolveInitialKeyboardMode(
             editorInfo = attribute,
-            chineseMode = chineseMode,
+            chineseMode = preferredMode,
             nativeEngineAvailable = nativeEngineAvailable
         )
         clearCompositionState(resetSession = false)
-        if (!nativeEngineAvailable) {
-            showNativeEngineUnavailableToast()
-            return
-        }
-        rimeSession = RimeBridge.createSession()
+        if (!nativeEngineAvailable) showNativeEngineUnavailableToast()
+        rimeSession = if (nativeEngineAvailable) RimeBridge.createSession() else null
+        val session = rimeSession
+        typingController = TypingController(object : TextEditor {
+            override fun compose(text: String) { inputConnectionWrapper.setComposingText(text, 1) }
+            override fun commit(text: String) { inputConnectionWrapper.commitText(text, 1) }
+            override fun delete() { inputConnectionWrapper.deletePreviousCharacter() }
+            override fun enter() { inputConnectionWrapper.performEnterAction() }
+        }, session?.let { active -> object : ChineseComposer {
+            override val text get() = active.composingText
+            override val candidates get() = active.candidates
+            override fun key(key: String) { active.processKey(key) }
+            override fun select(index: Int) = active.selectCandidate(index)
+            override fun reset() { active.reset() }
+        } })
     }
 
     override fun onCreateInputView(): View {
@@ -151,13 +167,23 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
             RimeBridge.destroySession(it)
         }
         rimeSession = null
+        typingController = null
     }
 
     override fun onCurrentInputMethodSubtypeChanged(newSubtype: InputMethodSubtype?) {
         super.onCurrentInputMethodSubtypeChanged(newSubtype)
-        chineseMode = resolveChineseMode(newSubtype)
+        typingController?.commitRaw()
+        clearCompositionState()
+        chineseMode = KeyboardMode.PINYIN
         if (nativeEngineAvailable && keyboardMode.isChineseMode()) {
             keyboardMode = chineseMode
+        }
+    }
+
+    override fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        if (composingText.isNotEmpty() && (newSelStart != candidatesEnd || newSelEnd != candidatesEnd)) {
+            clearCompositionState()
         }
     }
 
@@ -205,6 +231,8 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
                 onKeyPress = { key -> handleKeyPress(key) },
                 onCandidateSelected = { index, candidate -> commitCandidate(index, candidate) },
                 candidates = candidates,
+                chineseEnabled = chineseEnabled,
+                enterLabel = enterLabel,
                 quickCommandSuggestions = if (keyboardMode == KeyboardMode.COMMANDS) {
                     CommandPalette.defaultQuickCommands
                 } else {
@@ -219,141 +247,27 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     }
 
     private fun handleKeyPress(key: String) {
-        val ic = inputConnectionWrapper
-        val session = rimeSession
-
-        when {
-            key == "BACKSPACE" -> {
-                if (keyboardMode.isChineseMode() && session?.hasComposing() == true) {
-                    session.processKey("BackSpace")
-                    syncSessionState(session)
-                } else {
-                    ic.deleteSurroundingText(1, 0)
-                }
-            }
-            key == "ENTER" -> {
-                if (keyboardMode.isChineseMode() && session?.hasComposing() == true) {
-                    val committed = session.commit()
-                    if (committed.isNotEmpty()) {
-                        ic.commitText(committed, 1)
-                    }
-                    clearCompositionState(resetSession = false)
-                } else {
-                    ic.performEnterAction()
-                }
-            }
-            key == "SPACE" -> {
-                if (keyboardMode.isChineseMode() && candidates.isNotEmpty()) {
-                    commitCandidate(0, candidates.first())
-                } else {
-                    ic.commitText(" ", 1)
-                }
-            }
-            else -> {
-                if (keyboardMode.isChineseMode()) {
-                    val activeSession = session ?: return
-                    if (keyboardMode == KeyboardMode.ZHUYIN) {
-                        processZhuyinKey(activeSession, key)
-                    } else {
-                        activeSession.processKey(normalizeKeyForChineseMode(key))
-                    }
-                    syncSessionState(activeSession)
-                } else {
-                    ic.commitText(key, 1)
-                }
-            }
-        }
-    }
-
-    private fun processZhuyinKey(session: RimeSession, key: String) {
-        when (key) {
-            "ㄓ_ㄗ" -> session.processKey("5")
-            "ㄔ_ㄘ" -> session.processKey("t")
-            "ㄕ_ㄙ" -> session.processKey("g")
-            "ㄢ_ㄤ" -> session.processKey("0")
-            "ㄣ_ㄥ" -> session.processKey("p")
-            "ㄧㄝ" -> {
-                session.processKey("u")
-                session.processKey(",")
-            }
-            "ㄨㄛ" -> {
-                session.processKey("j")
-                session.processKey("i")
-            }
-            "ㄧㄢ_ㄤ" -> {
-                session.processKey("u")
-                session.processKey("0")
-            }
-            "ㄨㄢ_ㄤ" -> {
-                session.processKey("j")
-                session.processKey("0")
-            }
-            "ㄧㄣ_ㄥ" -> {
-                session.processKey("u")
-                session.processKey("p")
-            }
-            "ㄨㄣ_ㄥ" -> {
-                session.processKey("j")
-                session.processKey("p")
-            }
-            "ㄅ" -> session.processKey("1")
-            "ㄉ" -> session.processKey("2")
-            "ˇ" -> session.processKey("3")
-            "ˋ" -> session.processKey("4")
-            "ˊ" -> session.processKey("6")
-            "˙" -> session.processKey("7")
-            "ㄚ" -> session.processKey("8")
-            "ㄞ" -> session.processKey("9")
-            "ㄆ" -> session.processKey("q")
-            "ㄊ" -> session.processKey("w")
-            "ㄍ" -> session.processKey("e")
-            "ㄐ" -> session.processKey("r")
-            "ㄧ" -> session.processKey("u")
-            "ㄛ" -> session.processKey("i")
-            "ㄟ" -> session.processKey("o")
-            "ㄇ" -> session.processKey("a")
-            "ㄋ" -> session.processKey("s")
-            "ㄎ" -> session.processKey("d")
-            "ㄑ" -> session.processKey("f")
-            "ㄨ" -> session.processKey("j")
-            "ㄜ" -> session.processKey("k")
-            "ㄠ" -> session.processKey("l")
-            "ㄈ" -> session.processKey("z")
-            "ㄌ" -> session.processKey("x")
-            "ㄏ" -> session.processKey("c")
-            "ㄒ" -> session.processKey("v")
-            "ㄖ" -> session.processKey("b")
-            "ㄩ" -> session.processKey("m")
-            else -> session.processKey(normalizeKeyForChineseMode(key))
-        }
+        typingController?.key(key, keyboardMode == KeyboardMode.PINYIN)
+        rimeSession?.let(::syncSessionState)
     }
 
     private fun handleKeyboardModeChange(mode: KeyboardMode) {
-        if (!nativeEngineAvailable && mode.isChineseMode()) {
-            keyboardMode = KeyboardMode.LATIN
-            showNativeEngineUnavailableToast()
-            return
+        if ((!nativeEngineAvailable || !chineseEnabled) && mode.isChineseMode()) return
+        typingController?.commitRaw()
+        clearCompositionState()
+        keyboardMode = if (mode == KeyboardMode.ZHUYIN) KeyboardMode.PINYIN else mode
+        if (keyboardMode == KeyboardMode.PINYIN || keyboardMode == KeyboardMode.LATIN) {
+            preferredMode = keyboardMode
         }
-        keyboardMode = mode
     }
 
     private fun commitCandidate(index: Int, candidate: String) {
-        if (keyboardMode.isChineseMode()) {
-            val session = rimeSession
-            if (session != null && session.hasComposing()) {
-                val committedText = session.selectCandidate(index)
-                if (committedText.isNotEmpty()) {
-                    inputConnectionWrapper.commitText(committedText, 1)
-                } else if (!session.hasComposing()) {
-                    inputConnectionWrapper.commitText(candidate, 1)
-                }
-                syncSessionState(session)
-                return
-            }
+        if (keyboardMode == KeyboardMode.PINYIN) {
+            typingController?.select(index)
+            rimeSession?.let(::syncSessionState)
+        } else {
+            inputConnectionWrapper.commitText(candidate, 1)
         }
-
-        inputConnectionWrapper.commitText(candidate, 1)
-        clearCompositionState()
     }
 
     private fun syncSessionState(session: RimeSession) {
@@ -375,17 +289,6 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
         inputConnectionWrapper.finishComposingText()
         composingText = ""
         candidates.clear()
-    }
-
-    private fun normalizeKeyForChineseMode(key: String): String {
-        return if (chineseMode == KeyboardMode.PINYIN || chineseMode == KeyboardMode.ZHUYIN) key.lowercase() else key
-    }
-
-    private fun resolveChineseMode(subtype: InputMethodSubtype?): KeyboardMode {
-        return when (subtype?.getExtraValueOf("mode")?.lowercase()) {
-            "pinyin" -> KeyboardMode.PINYIN
-            else -> KeyboardMode.ZHUYIN
-        }
     }
 
     private val inputMethodManager: InputMethodManager

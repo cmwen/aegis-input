@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -27,9 +28,9 @@ fun CandidateBar(
     onCandidateSelected: (Int, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (candidates.isEmpty()) return
-
     val scrollState = rememberScrollState()
+    LaunchedEffect(candidates.toList()) { scrollState.scrollTo(0) }
+    if (candidates.isEmpty()) return
 
     Surface(
         color = MaterialTheme.colorScheme.surface,

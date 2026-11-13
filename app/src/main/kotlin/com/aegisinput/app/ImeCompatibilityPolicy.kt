@@ -50,6 +50,27 @@ internal object ImeCompatibilityPolicy {
         }
     }
 
+    fun isSensitiveField(inputType: Int): Boolean {
+        val variation = inputType and InputType.TYPE_MASK_VARIATION
+        return when (inputType and InputType.TYPE_MASK_CLASS) {
+            InputType.TYPE_CLASS_TEXT -> variation in setOf(InputType.TYPE_TEXT_VARIATION_PASSWORD, InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD, InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD)
+            InputType.TYPE_CLASS_NUMBER -> variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            else -> false
+        }
+    }
+
+    fun enterLabel(imeOptions: Int?): String = when {
+        imeOptions == null || imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0 -> "↵"
+        else -> when (imeOptions.and(EditorInfo.IME_MASK_ACTION)) {
+        EditorInfo.IME_ACTION_SEARCH -> "Search"
+        EditorInfo.IME_ACTION_SEND -> "Send"
+        EditorInfo.IME_ACTION_GO -> "Go"
+        EditorInfo.IME_ACTION_NEXT -> "Next"
+        EditorInfo.IME_ACTION_DONE -> "Done"
+        else -> "↵"
+        }
+    }
+
     fun resolveEnterKeyBehavior(imeOptions: Int?): EnterKeyBehavior {
         if (imeOptions == null) return EnterKeyBehavior.SendEnterKey
         if ((imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0) {

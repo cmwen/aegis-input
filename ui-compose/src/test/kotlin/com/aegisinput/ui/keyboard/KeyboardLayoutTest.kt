@@ -1,80 +1,31 @@
 package com.aegisinput.ui.keyboard
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Test
 
 class KeyboardLayoutTest {
+    private fun rows(mode: KeyboardMode, shift: Boolean = false) = KeyboardLayout.rowsFor(mode, KeyboardMode.PINYIN, shift)
 
-    @Test
-    fun latinLayoutIncludesChineseModeSwitch() {
-        val bottomRow = KeyboardLayout.rowsFor(
-            mode = KeyboardMode.LATIN,
-            chineseMode = KeyboardMode.ZHUYIN,
-            uppercaseLatin = false
-        ).last()
-
-        assertEquals("MODE_CHINESE", bottomRow.first().code)
-        assertEquals("注音", bottomRow.first().label)
+    @Test fun englishAndPinyinShareFamiliarLetterRows() {
+        for (mode in listOf(KeyboardMode.LATIN, KeyboardMode.PINYIN)) {
+            assertEquals("qwertyuiop", rows(mode)[0].joinToString("") { it.code })
+            assertEquals("asdfghjkl", rows(mode)[1].joinToString("") { it.code })
+            assertEquals("zxcvbnm", rows(mode)[2].filter { it.type == KeyType.CHARACTER }.joinToString("") { it.code })
+        }
     }
-
-    @Test
-    fun pinyinLayoutUsesLatinEscapeKey() {
-        val bottomRow = KeyboardLayout.rowsFor(
-            mode = KeyboardMode.PINYIN,
-            chineseMode = KeyboardMode.PINYIN,
-            uppercaseLatin = false
-        ).last()
-
-        assertEquals("MODE_LATIN", bottomRow.first().code)
-        assertEquals("ABC", bottomRow.first().label)
+    @Test fun languageSwitchIsVisibleWithoutCrowdingOutSpace() {
+        assertTrue(rows(KeyboardMode.LATIN).last().any { it.code == "MODE_CHINESE" && it.label == "中" })
+        assertTrue(rows(KeyboardMode.PINYIN).last().any { it.code == "MODE_LATIN" && it.label == "EN" })
+        assertTrue(rows(KeyboardMode.PINYIN).last().first { it.code == "SPACE" }.widthWeight >= 3f)
+        assertFalse(rows(KeyboardMode.LATIN).last().any { it.code == "MODE_COMMANDS" })
     }
-
-    @Test
-    fun uppercaseLatinRowsCapitalizeLetters() {
-        val topLeftKey = KeyboardLayout.rowsFor(
-            mode = KeyboardMode.LATIN,
-            chineseMode = KeyboardMode.ZHUYIN,
-            uppercaseLatin = true
-        ).first().first()
-
-        assertEquals("Q", topLeftKey.label)
-        assertEquals("Q", topLeftKey.code)
+    @Test fun shiftCapitalizesEnglishAndKeepsPinyinLowercase() {
+        assertEquals("Q", rows(KeyboardMode.LATIN, true)[0][0].code)
+        assertEquals("q", rows(KeyboardMode.PINYIN, true)[0][0].code)
     }
-
-    @Test
-    fun latinLayoutIncludesCommandPaletteSwitch() {
-        val bottomRow = KeyboardLayout.rowsFor(
-            mode = KeyboardMode.LATIN,
-            chineseMode = KeyboardMode.ZHUYIN,
-            uppercaseLatin = false
-        ).last()
-
-        assertTrue(bottomRow.any { it.code == "MODE_COMMANDS" && it.label == "CMD" })
-    }
-
-    @Test
-    fun commandLayoutDisablesShiftAndExposesCommonCommandKeys() {
-        val rows = KeyboardLayout.rowsFor(
-            mode = KeyboardMode.COMMANDS,
-            chineseMode = KeyboardMode.PINYIN,
-            uppercaseLatin = true
-        )
-
-        assertTrue(rows.flatten().none { it.code == "SHIFT" })
-        assertEquals("/", rows[2].first().code)
-        assertEquals("MODE_LATIN", rows.last()[1].code)
-    }
-
-    @Test
-    fun symbolLayoutOffersBothReturnModes() {
-        val bottomRow = KeyboardLayout.rowsFor(
-            mode = KeyboardMode.SYMBOLS,
-            chineseMode = KeyboardMode.PINYIN,
-            uppercaseLatin = false
-        ).last()
-
-        assertTrue(bottomRow.any { it.code == "MODE_CHINESE" && it.label == "拼音" })
-        assertTrue(bottomRow.any { it.code == "MODE_LATIN" && it.label == "ABC" })
+    @Test fun punctuationIncludesExplicitSyllableBoundaryAndBothLanguageReturns() {
+        assertTrue(rows(KeyboardMode.SYMBOLS).flatten().any { it.code == "'" })
+        assertTrue(rows(KeyboardMode.SYMBOLS).last().any { it.code == "MODE_CHINESE" })
+        assertTrue(rows(KeyboardMode.SYMBOLS).last().any { it.code == "MODE_LATIN" })
     }
 }

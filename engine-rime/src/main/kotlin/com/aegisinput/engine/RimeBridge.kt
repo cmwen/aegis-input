@@ -3,7 +3,7 @@ package com.aegisinput.engine
 import android.content.Context
 
 /**
- * JNI bridge to Librime. All native calls are routed through this singleton.
+ * JNI bridge to the bundled offline Pinyin decoder. Names are retained for API compatibility.
  * Runs entirely on-device — no data leaves the device.
  */
 object RimeBridge {
@@ -26,18 +26,21 @@ object RimeBridge {
         return nativeLibraryErrorMessage
     }
 
+    @Synchronized
     fun initialize(context: Context): Boolean {
         if (!ensureNativeLibraryLoaded()) return false
         if (initialized) return true
-        copyAssetsToFilesDir(context)
-        val dataDir = context.filesDir.resolve("rime").absolutePath
-        val sharedDir = context.getExternalFilesDir(null)?.resolve("rime")?.absolutePath ?: dataDir
         return try {
-            nativeInitialize(dataDir, sharedDir)
+            copyAssetsToFilesDir(context)
+            val dataDir = context.filesDir.resolve("rime").absolutePath
+            nativeInitialize(dataDir, dataDir)
             initialized = true
             true
         } catch (error: UnsatisfiedLinkError) {
             nativeLibraryErrorMessage = error.message ?: "Unable to initialize the native AegisInput engine."
+            false
+        } catch (error: Exception) {
+            nativeLibraryErrorMessage = error.message ?: "Unable to load the offline Pinyin dictionary."
             false
         }
     }
@@ -47,23 +50,19 @@ object RimeBridge {
         if (!rimeDir.exists()) {
             rimeDir.mkdirs()
         }
+        val destFile = rimeDir.resolve("pinyin_simp.dict.yaml")
+        val temporary = rimeDir.resolve("pinyin_simp.dict.yaml.tmp")
         try {
-            val assetManager = context.assets
-            val files = assetManager.list("rime") ?: return
-            for (fileName in files) {
-                val assetPath = "rime/$fileName"
-                val destFile = rimeDir.resolve(fileName)
-                assetManager.open(assetPath).use { input ->
-                    destFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                }
+            context.assets.open("rime/pinyin_simp.dict.yaml").use { input ->
+                temporary.outputStream().use { output -> input.copyTo(output) }
             }
-        } catch (e: Exception) {
-            android.util.Log.e("AegisInput-RimeBridge", "Failed to copy RIME assets", e)
+            check(temporary.renameTo(destFile)) { "Unable to install the offline Pinyin dictionary." }
+        } finally {
+            temporary.delete()
         }
     }
 
+    @Synchronized
     fun shutdown() {
         if (!nativeLibraryLoaded) return
         if (!initialized) return

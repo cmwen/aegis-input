@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -69,7 +71,9 @@ fun KeyboardView(
     quickCommandSuggestions: List<String> = emptyList(),
     onHideKeyboard: () -> Unit = {},
     onSwitchKeyboard: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    chineseEnabled: Boolean = true,
+    enterLabel: String = "↵"
 ) {
     var shiftEnabled by remember(keyboardMode) { mutableStateOf(false) }
     var zhuyinPage by remember(keyboardMode) { mutableStateOf(1) }
@@ -102,16 +106,30 @@ fun KeyboardView(
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp).padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = composingText.ifEmpty { if (keyboardMode == KeyboardMode.PINYIN) "拼音 · 简体中文" else "English · QWERTY" },
+                    color = if (composingText.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                    fontSize = if (composingText.isEmpty()) 12.sp else 18.sp,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1
+                )
+                Text("Aegis", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             CandidateBar(
                 candidates = visibleCandidates,
                 onCandidateSelected = onCandidateSelected
             )
 
-            rows.forEach { row ->
+            rows.forEachIndexed { rowIndex, row ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 4.dp)
+                        .padding(horizontal = if (rowIndex == 1 && keyboardMode != KeyboardMode.ZHUYIN) 18.dp else 4.dp)
                 ) {
                     row.forEach { keyDef ->
                         val hint = if (keyboardMode == KeyboardMode.ZHUYIN) {
@@ -119,15 +137,20 @@ fun KeyboardView(
                         } else null
 
                         KeyButton(
-                            keyDef = keyDef,
+                            keyDef = when {
+                                keyDef.code == "ENTER" -> keyDef.copy(label = enterLabel)
+                                keyDef.code == "SHIFT" && shiftEnabled -> keyDef.copy(label = "⬆")
+                                else -> keyDef
+                            },
                             hintLabel = hint,
+                            enabled = keyDef.code != "MODE_CHINESE" || chineseEnabled,
                             onPress = { key ->
                                 when (key.code) {
                                     "MODE_LATIN" -> onKeyboardModeChange(KeyboardMode.LATIN)
                                     "MODE_COMMANDS" -> onKeyboardModeChange(KeyboardMode.COMMANDS)
-                                    "MODE_CHINESE" -> onKeyboardModeChange(chineseMode)
+                                    "MODE_CHINESE" -> if (chineseEnabled) onKeyboardModeChange(chineseMode)
                                     "SYMBOLS" -> onKeyboardModeChange(KeyboardMode.SYMBOLS)
-                                    "SHIFT" -> shiftEnabled = !shiftEnabled
+                                    "SHIFT" -> if (keyboardMode == KeyboardMode.PINYIN) onKeyboardModeChange(KeyboardMode.LATIN) else { shiftEnabled = !shiftEnabled }
                                     "TOGGLE_PAGE" -> {
                                         zhuyinPage = if (zhuyinPage == 1) 2 else 1
                                     }
@@ -162,7 +185,8 @@ fun SystemControlBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(40.dp)
+            .navigationBarsPadding()
+            .height(32.dp)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -202,5 +226,5 @@ fun SystemControlBar(
 }
 
 private fun KeyboardMode.supportsShift(): Boolean {
-    return this == KeyboardMode.LATIN || this == KeyboardMode.PINYIN
+    return this == KeyboardMode.LATIN
 }

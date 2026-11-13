@@ -1,7 +1,7 @@
 package com.aegisinput.engine
 
 /**
- * Represents an active RIME input session. Each typing context
+ * Represents an active offline Pinyin input session. Each typing context
  * gets its own session to isolate composing state.
  */
 class RimeSession(val id: Long) {

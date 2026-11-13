@@ -35,7 +35,7 @@ object KeyboardLayout {
     private fun latinRows(chineseMode: KeyboardMode, uppercaseLatin: Boolean): List<List<KeyDef>> {
         return qwertyRows(
             leadingSwitch = KeyDef(
-                label = if (chineseMode == KeyboardMode.ZHUYIN) "注音" else "拼音",
+                label = "中",
                 code = "MODE_CHINESE",
                 widthWeight = 1.5f,
                 type = KeyType.MODIFIER
@@ -62,7 +62,7 @@ object KeyboardLayout {
         ),
         listOf(
             KeyDef(
-                label = if (chineseMode == KeyboardMode.ZHUYIN) "注音" else "拼音",
+                label = "中",
                 code = "MODE_CHINESE",
                 widthWeight = 1.2f,
                 type = KeyType.MODIFIER
@@ -77,8 +77,8 @@ object KeyboardLayout {
 
     private fun pinyinRows(uppercaseLatin: Boolean): List<List<KeyDef>> {
         return qwertyRows(
-            leadingSwitch = KeyDef("ABC", "MODE_LATIN", 1.5f, KeyType.MODIFIER),
-            uppercaseLatin = uppercaseLatin
+            leadingSwitch = KeyDef("EN", "MODE_LATIN", 1.2f, KeyType.MODIFIER),
+            uppercaseLatin = false
         )
     }
 
@@ -121,10 +121,10 @@ object KeyboardLayout {
             KeyDef("⌫", "BACKSPACE", 1.5f, KeyType.BACKSPACE)
         ),
         listOf(
-            leadingSwitch,
-            KeyDef("CMD", "MODE_COMMANDS", 1.1f, KeyType.MODIFIER),
-            KeyDef("123", "SYMBOLS", 1.2f, KeyType.MODIFIER),
-            KeyDef(" ", "SPACE", 2.5f, KeyType.SPACE),
+            KeyDef("?123", "SYMBOLS", 1.4f, KeyType.MODIFIER),
+            leadingSwitch.copy(widthWeight = 1.1f),
+            KeyDef(if (leadingSwitch.code == "MODE_LATIN") "'" else ","),
+            KeyDef(if (leadingSwitch.code == "MODE_LATIN") "拼音" else "English", "SPACE", 3.5f, KeyType.SPACE),
             KeyDef(".", ".", 0.9f, KeyType.CHARACTER),
             KeyDef("↵", "ENTER", 1.3f, KeyType.ENTER)
         )
@@ -188,12 +188,12 @@ object KeyboardLayout {
         ),
         listOf(
             KeyDef(
-                label = if (chineseMode == KeyboardMode.ZHUYIN) "注音" else "拼音",
+                label = "中",
                 code = "MODE_CHINESE",
                 widthWeight = 1.3f,
                 type = KeyType.MODIFIER
             ),
-            KeyDef("ABC", "MODE_LATIN", 1.2f, KeyType.MODIFIER),
+            KeyDef("EN", "MODE_LATIN", 1.2f, KeyType.MODIFIER),
             KeyDef(",", ",", 0.9f, KeyType.CHARACTER),
             KeyDef(" ", "SPACE", 2.8f, KeyType.SPACE),
             KeyDef(".", ".", 0.9f, KeyType.CHARACTER),

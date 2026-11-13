@@ -24,6 +24,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 
 @Composable
 fun KeyButton(
@@ -31,6 +33,7 @@ fun KeyButton(
     onPress: (KeyDef) -> Unit,
     modifier: Modifier = Modifier,
     hintLabel: String? = null,
+    enabled: Boolean = true,
     onBoundsChanged: (DynamicHitbox.KeyBounds) -> Unit = {}
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -53,14 +56,14 @@ fun KeyButton(
     }
 
     val fontSize = when (keyDef.type) {
-        KeyType.CHARACTER -> 18.sp
+        KeyType.CHARACTER -> 21.sp
         else -> 14.sp
     }
 
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .height(48.dp)
+            .height(54.dp)
             .padding(horizontal = 2.dp, vertical = 3.dp)
             .shadow(if (isPressed) 0.dp else 2.dp, RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
@@ -71,7 +74,18 @@ fun KeyButton(
                 shape = RoundedCornerShape(8.dp)
             )
             .trackKeyBounds(keyDef, onBoundsChanged)
+            .semantics { contentDescription = when (keyDef.code) {
+                "BACKSPACE" -> "Backspace"
+                "SPACE" -> "Space"
+                "ENTER" -> "Enter"
+                "SHIFT" -> "Shift"
+                "MODE_CHINESE" -> "Switch to Chinese Pinyin"
+                "MODE_LATIN" -> "Switch to English"
+                "SYMBOLS" -> "Numbers and symbols"
+                else -> keyDef.label
+            } }
             .clickable(
+                enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null
             ) {

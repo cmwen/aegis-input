@@ -125,4 +125,11 @@ class ImeCompatibilityPolicyTest {
 
         assertEquals(EnterKeyBehavior.SendEnterKey, behavior)
     }
+    @org.junit.Test
+    fun passwordsAreSensitiveButOrdinaryTextIsNot() {
+        org.junit.Assert.assertTrue(ImeCompatibilityPolicy.isSensitiveField(android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD))
+        org.junit.Assert.assertTrue(ImeCompatibilityPolicy.isSensitiveField(android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD))
+        org.junit.Assert.assertFalse(ImeCompatibilityPolicy.isSensitiveField(android.text.InputType.TYPE_CLASS_TEXT))
+    }
+
 }
