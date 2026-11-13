@@ -6,7 +6,7 @@ plugins {
 
 fun getVersionFromGit(): Pair<Int, String> {
     return try {
-        val process = Runtime.getRuntime().exec(arrayOf("git", "describe", "--tags", "--always"))
+        val process = Runtime.getRuntime().exec(arrayOf("git", "describe", "--tags", "--abbrev=0"))
         val version = process.inputStream.bufferedReader().readText().trim()
         process.waitFor()
         

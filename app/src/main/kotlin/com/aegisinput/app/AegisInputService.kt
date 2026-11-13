@@ -55,7 +55,6 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     private var rankingGeneration = 0
     private val preferences by lazy { getSharedPreferences("keyboard", MODE_PRIVATE) }
     private var keyboardComposeView: ComposeView? = null
-    private var inputViewContentBound = false
     private var rimeSession: RimeSession? = null
     private val inputConnectionWrapper = InputConnectionWrapper()
     private val candidates = mutableStateListOf<String>()
@@ -143,24 +142,20 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     }
 
     override fun onCreateInputView(): View {
-        val composeView = keyboardComposeView ?: ComposeView(this).apply {
+        // Android replaces its input-view container on configuration changes. A
+        // previously returned view can still belong to the old container, so each
+        // creation request must receive a fresh child and composition.
+        keyboardComposeView?.disposeComposition()
+        val composeView = ComposeView(this).apply {
             id = R.id.keyboard_compose_view
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
-            addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
-                override fun onViewAttachedToWindow(v: View) {
-                    bindInputViewContent(this@apply)
-                }
-
-                override fun onViewDetachedFromWindow(v: View) {
-                    inputViewContentBound = false
-                }
-            })
-            if (isAttachedToWindow) {
-                bindInputViewContent(this)
-            }
-        }.also { cView ->
-            keyboardComposeView = cView
+            setViewTreeLifecycleOwner(this@AegisInputService)
+            setViewTreeSavedStateRegistryOwner(this@AegisInputService)
+            setViewTreeViewModelStoreOwner(this@AegisInputService)
+            setViewTreeOnBackPressedDispatcherOwner(this@AegisInputService)
         }
+        keyboardComposeView = composeView
+        bindInputViewContent(composeView)
 
         window?.window?.decorView?.let { decorView ->
             decorView.setViewTreeLifecycleOwner(this@AegisInputService)
@@ -238,7 +233,6 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
         moveLifecycleToCreated()
         keyboardComposeView?.disposeComposition()
         keyboardComposeView = null
-        inputViewContentBound = false
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         serviceScope.cancel()
         viewModelStore.clear()
@@ -267,8 +261,6 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     }
 
     private fun bindInputViewContent(composeView: ComposeView) {
-        if (inputViewContentBound) return
-        inputViewContentBound = true
         composeView.setContent {
             KeyboardView(
                 keyboardMode = keyboardMode,
