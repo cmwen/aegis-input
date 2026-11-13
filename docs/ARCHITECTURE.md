@@ -1,17 +1,13 @@
 # AegisInput architecture
 
-The Android IME is split into three modules:
+`app` owns the Android InputMethodService, Compose lifecycle owners, editor connections and a fresh native Rime session per editor. `TypingController` implements composition, raw commit, candidate selection, Unicode deletion and editor actions through JVM-testable interfaces. Password fields force English and block Chinese input.
 
-- `app`: `AegisInputService` owns Android lifecycle and a session per editor; `TypingController` handles editing rules through small editor/composer interfaces, allowing JVM regression tests without an Android device. `InputConnectionWrapper` commits or replaces composition, deletes selected text or Unicode code points, and dispatches editor actions. The launcher provides enable/picker actions and a real Android text field for testing the actual IME.
-- `ui-compose`: familiar QWERTY English/Pinyin layouts, numbers and punctuation, composition text, scrollable candidates, language switch, and keyboard controls. The candidate strip resets scroll position when results change. The keyboard supports dark/light themes and navigation-bar insets.
-- `engine-rime`: the historical module and bridge names are retained, but its implementation is an independent native offline Pinyin decoder rather than Librime. It loads the bundled full weighted Rime Pinyin dictionary and assembles candidates across dictionary words. JNI converts strings between Java and Unicode native representations. Native host acceptance tests exercise the same decoder and actual dictionary used on Android.
+`engine-rime` builds the real Librime API and its dependencies from checksum-pinned upstream source. JNI serializes native calls and preserves Unicode text. `aegis_pinyin` uses the full bundled simplified Pinyin dictionary; `aegis_zhuyin` uses the tonal Terra Pinyin dictionary plus the official Rime essay frequency/phrase corpus and Rime's phonetic spelling algebra/key mapping. Fuzzy rules run in the active native schema, not through a mock lookup table.
 
-## Editing behavior
+Initialization and first dictionary compilation run on an IO coroutine. Shared schemas/data and writable user dictionaries live in separate private directories. Initialization failures appear in the keyboard status line. English typing remains usable while Chinese initializes. Unchanged asset contents are retained to avoid needless redeployment.
 
-Letters build Pinyin composition in Chinese mode. Candidate selection and space replace it with Chinese text. Enter and language changes preserve the visible Roman text. Punctuation selects the best candidate before inserting punctuation. Backspace edits the current composition before deleting committed text. Changes to editor selection clear internal composition so later keys cannot modify an old composing region. Each new editor starts with a fresh session; password fields force English and disable Chinese composition.
+A Room database stores a composite `(mode + composition, word)` key and frequency. Selections update it in an IO coroutine. Candidate ranking preserves the original native indices, and asynchronous results are discarded if the editor/session/composition changed. Rime also maintains its native local user dictionary. Version 1 Room data migrates to the composite-key schema without losing prior entries.
 
-The app keeps no network permission, telemetry, or remote services. Suggestions are dictionary-based and local; adaptive user learning and cloud prediction are not implemented. Zhuyin is not advertised or available in the current input-method subtype list.
+`ui-compose` renders Material 3 English/Pinyin QWERTY and a complete Zhuyin layout. The header switches Pinyin and Zhuyin explicitly. Every keyboard row resolves actual pointer events through DynamicHitbox; bounded touch-frequency weights adapt gap targets. Accessible key click actions use the same key dispatcher. The candidate strip scrolls horizontally; system controls switch/hide the keyboard.
 
-## Native packaging
-
-CMake builds the decoder for `arm64-v8a`, `armeabi-v7a`, and `x86_64`, with 16KB ELF page alignment. NDK version and Android SDK requirements are pinned in module Gradle files. The dictionary is an application asset loaded at initialization; the APK includes all data needed for offline use.
+No network permission, telemetry, cloud service or Android backup is enabled. Native libraries cover ARM64/ARMv7/x86_64 with 16KB ELF page alignment. JVM tests cover editing/layout rules; host C++ and Android instrumented acceptance tests exercise actual Librime, dictionaries, schema deployment, fuzzy conversion and reset. Instrumented SQLite tests cover multiple learned candidates and frequency ordering.

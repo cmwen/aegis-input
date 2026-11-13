@@ -44,3 +44,20 @@ abbreviation:
 keymap_bopomofo:
   __append:
     - 'xlit|bpmfdtnlgkhjqxZCSrzcsiuvaoeEAIOUMNKGR12345|1qaz2wsxedcrfv5tgbyhnujm8ik,9ol.0p;/- 6347|'
+
+fuzzy:
+  __append:
+    - derive/Z/z/
+    - derive/z/Z/
+    - derive/C/c/
+    - derive/c/C/
+    - derive/S/s/
+    - derive/s/S/
+    - derive/G/N/
+    - derive/N/G/
+    - derive/K/M/
+    - derive/M/K/
+    - derive/^n/l/
+    - derive/^l/n/
+    - derive/^f/h/
+    - derive/^h/f/

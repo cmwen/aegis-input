@@ -27,7 +27,7 @@ object KeyboardLayout {
             KeyboardMode.LATIN -> latinRows(chineseMode, uppercaseLatin)
             KeyboardMode.COMMANDS -> commandRows(chineseMode)
             KeyboardMode.PINYIN -> pinyinRows(uppercaseLatin)
-            KeyboardMode.ZHUYIN -> if (zhuyinPage == 2) zhuyinPage2Rows() else zhuyinPage1Rows()
+            KeyboardMode.ZHUYIN -> zhuyinRows()
             KeyboardMode.SYMBOLS -> symbolRows(chineseMode)
         }
     }
@@ -130,45 +130,18 @@ object KeyboardLayout {
         )
     )
 
-    private fun zhuyinPage1Rows(): List<List<KeyDef>> = listOf(
+    private fun zhuyinRows(): List<List<KeyDef>> = listOf(
+        "ㄅㄉˇˋㄓˊ˙ㄚㄞㄢ".map { KeyDef(it.toString()) },
+        "ㄆㄊㄍㄐㄔㄗㄧㄛㄟㄣ".map { KeyDef(it.toString()) },
+        "ㄇㄋㄎㄑㄕㄘㄨㄜㄠㄤ".map { KeyDef(it.toString()) },
+        "ㄈㄌㄏㄒㄖㄙㄩㄝㄡㄥ".map { KeyDef(it.toString()) },
         listOf(
-            KeyDef("ㄅ"), KeyDef("ㄆ"), KeyDef("ㄇ"), KeyDef("ㄈ"), KeyDef("ㄉ"), KeyDef("ㄊ"), KeyDef("ㄋ")
-        ),
-        listOf(
-            KeyDef("ㄌ"), KeyDef("ㄍ"), KeyDef("ㄎ"), KeyDef("ㄏ"), KeyDef("ㄐ"), KeyDef("ㄑ"), KeyDef("ㄒ")
-        ),
-        listOf(
-            KeyDef("ㄓ/ㄗ", "ㄓ_ㄗ"), KeyDef("ㄔ/ㄘ", "ㄔ_ㄘ"), KeyDef("ㄕ/ㄙ", "ㄕ_ㄙ"), KeyDef("ㄖ"),
-            KeyDef("ㄧ"), KeyDef("ㄨ"), KeyDef("ㄩ")
-        ),
-        listOf(
-            KeyDef("ABC", "MODE_LATIN", 1.1f, KeyType.MODIFIER),
-            KeyDef("⌫", "BACKSPACE", 1.1f, KeyType.BACKSPACE),
-            KeyDef(" ", "SPACE", 2.4f, KeyType.SPACE),
-            KeyDef("⇋", "TOGGLE_PAGE", 1.1f, KeyType.MODIFIER),
-            KeyDef("↵", "ENTER", 1.3f, KeyType.ENTER)
-        )
-    )
-
-    private fun zhuyinPage2Rows(): List<List<KeyDef>> = listOf(
-        listOf(
-            KeyDef("ㄚ"), KeyDef("ㄛ"), KeyDef("ㄜ"), KeyDef("ㄝ"), KeyDef("ㄞ"), KeyDef("ㄟ"), KeyDef("ㄠ")
-        ),
-        listOf(
-            KeyDef("ㄡ"), KeyDef("ㄦ"), KeyDef("ㄢ/ㄤ", "ㄢ_ㄤ"), KeyDef("ㄣ/ㄥ", "ㄣ_ㄥ"),
-            KeyDef("ㄧㄝ", "ㄧㄝ"), KeyDef("ㄨㄛ", "ㄨㄛ"), KeyDef("ˊ")
-        ),
-        listOf(
-            KeyDef("ㄧㄢ/ㄤ", "ㄧㄢ_ㄤ"), KeyDef("ㄨㄢ/ㄤ", "ㄨㄢ_ㄤ"),
-            KeyDef("ㄧㄣ/ㄥ", "ㄧㄣ_ㄥ"), KeyDef("ㄨㄣ/ㄥ", "ㄨㄣ_ㄥ"),
-            KeyDef("ˇ"), KeyDef("ˋ"), KeyDef("˙")
-        ),
-        listOf(
-            KeyDef("ABC", "MODE_LATIN", 1.1f, KeyType.MODIFIER),
-            KeyDef("⌫", "BACKSPACE", 1.1f, KeyType.BACKSPACE),
-            KeyDef(" ", "SPACE", 2.4f, KeyType.SPACE),
-            KeyDef("⇋", "TOGGLE_PAGE", 1.1f, KeyType.MODIFIER),
-            KeyDef("↵", "ENTER", 1.3f, KeyType.ENTER)
+            KeyDef("123", "SYMBOLS", 1.1f, KeyType.MODIFIER),
+            KeyDef("EN", "MODE_LATIN", 1f, KeyType.MODIFIER),
+            KeyDef("ㄦ"), KeyDef("ˉ"),
+            KeyDef("注音", "SPACE", 2.4f, KeyType.SPACE),
+            KeyDef("⌫", "BACKSPACE", 1.2f, KeyType.BACKSPACE),
+            KeyDef("↵", "ENTER", 1.2f, KeyType.ENTER)
         )
     )
 

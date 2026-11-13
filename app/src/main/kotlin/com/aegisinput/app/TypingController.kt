@@ -6,6 +6,7 @@ internal interface ChineseComposer {
     val candidates: List<String>
     fun key(key: String)
     fun select(index: Int): String
+    fun drainCommit(): String = ""
     fun reset()
 }
 
@@ -31,8 +32,10 @@ internal class TypingController(
                 if (active.candidates.isNotEmpty()) select(0) else commitRaw()
             } else editor.commit(" ")
             "ENTER" -> if (active?.text?.isNotEmpty() == true) commitRaw() else editor.enter()
-            else -> if (active != null && key.length == 1 && (key[0].isLetter() || key == "'")) {
+            else -> if (active != null && key.length == 1 && (key[0].isLetter() || key == "'" || key in "ˉˊˇˋ˙")) {
                 active.key(key.lowercase())
+                val committed = active.drainCommit()
+                if (committed.isNotEmpty()) editor.commit(committed)
                 editor.compose(active.text)
             } else {
                 if (active?.text?.isNotEmpty() == true) {

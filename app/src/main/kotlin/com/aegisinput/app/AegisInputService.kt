@@ -26,6 +26,13 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.aegisinput.engine.data.UserDictDatabase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.aegisinput.engine.RimeBridge
 import com.aegisinput.engine.RimeSession
 import com.aegisinput.ui.keyboard.CommandPalette
@@ -44,6 +51,9 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     override val savedStateRegistry: SavedStateRegistry
         get() = savedStateRegistryController.savedStateRegistry
 
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var rankingGeneration = 0
+    private val preferences by lazy { getSharedPreferences("keyboard", MODE_PRIVATE) }
     private var keyboardComposeView: ComposeView? = null
     private var inputViewContentBound = false
     private var rimeSession: RimeSession? = null
@@ -56,8 +66,10 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     private var enterLabel by mutableStateOf("↵")
     private var preferredMode = KeyboardMode.PINYIN
     private var typingController: TypingController? = null
-    private var nativeEngineAvailable = false
-    private var nativeEngineUnavailableMessage: String? = null
+    private var serviceDestroyed = false
+    private var engineLoading by mutableStateOf(true)
+    private var nativeEngineAvailable by mutableStateOf(false)
+    private var nativeEngineUnavailableMessage by mutableStateOf<String?>(null)
     private var hasShownNativeEngineUnavailableToast = false
 
     override fun onCreate() {
@@ -65,8 +77,13 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
         savedStateRegistryController.performAttach()
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-        nativeEngineAvailable = RimeBridge.initialize(applicationContext)
-        nativeEngineUnavailableMessage = RimeBridge.unavailableMessage()
+        serviceScope.launch {
+            nativeEngineAvailable = withContext(Dispatchers.IO) { RimeBridge.initialize(applicationContext) }
+            if (serviceDestroyed) return@launch
+            engineLoading = false
+            nativeEngineUnavailableMessage = RimeBridge.unavailableMessage()
+            currentInputEditorInfo?.let { onStartInput(it, true) }
+        }
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
@@ -74,7 +91,8 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
         inputConnectionWrapper.bind(currentInputConnection, attribute)
         rimeSession?.let(RimeBridge::destroySession)
         rimeSession = null
-        chineseMode = KeyboardMode.PINYIN
+        chineseMode = if (preferences.getBoolean("zhuyin", false)) KeyboardMode.ZHUYIN else KeyboardMode.PINYIN
+        preferredMode = if (preferences.getBoolean("english", false)) KeyboardMode.LATIN else chineseMode
         chineseEnabled = !ImeCompatibilityPolicy.isSensitiveField(attribute?.inputType ?: 0)
         enterLabel = ImeCompatibilityPolicy.enterLabel(attribute?.imeOptions)
         keyboardMode = ImeCompatibilityPolicy.resolveInitialKeyboardMode(
@@ -83,8 +101,23 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
             nativeEngineAvailable = nativeEngineAvailable
         )
         clearCompositionState(resetSession = false)
-        if (!nativeEngineAvailable) showNativeEngineUnavailableToast()
-        rimeSession = if (nativeEngineAvailable) RimeBridge.createSession() else null
+        if (!nativeEngineAvailable && !engineLoading) showNativeEngineUnavailableToast()
+        rimeSession = if (nativeEngineAvailable) try {
+            RimeBridge.createSession().also { session ->
+                try {
+                    session.selectSchema(chineseMode == KeyboardMode.ZHUYIN)
+                } catch (error: Exception) {
+                    RimeBridge.destroySession(session)
+                    throw error
+                }
+            }
+        } catch (error: Exception) {
+            nativeEngineAvailable = false
+            nativeEngineUnavailableMessage = error.message
+            keyboardMode = KeyboardMode.LATIN
+            showNativeEngineUnavailableToast()
+            null
+        } else null
         val session = rimeSession
         typingController = TypingController(object : TextEditor {
             override fun compose(text: String) { inputConnectionWrapper.setComposingText(text, 1) }
@@ -95,7 +128,16 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
             override val text get() = active.composingText
             override val candidates get() = active.candidates
             override fun key(key: String) { active.processKey(key) }
-            override fun select(index: Int) = active.selectCandidate(index)
+            override fun drainCommit() = active.commit()
+            override fun select(index: Int): String {
+                val code = "${chineseMode.name}:${active.composingText}"
+                val word = active.candidates.getOrNull(index)
+                val committed = active.selectCandidate(index)
+                if (!word.isNullOrEmpty() && chineseEnabled) serviceScope.launch(Dispatchers.IO) {
+                    UserDictDatabase.getInstance(applicationContext).userDictDao().learn(code, word)
+                }
+                return committed
+            }
             override fun reset() { active.reset() }
         } })
     }
@@ -174,7 +216,9 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
         super.onCurrentInputMethodSubtypeChanged(newSubtype)
         typingController?.commitRaw()
         clearCompositionState()
-        chineseMode = KeyboardMode.PINYIN
+        chineseMode = if (newSubtype?.getExtraValueOf("mode") == "zhuyin") KeyboardMode.ZHUYIN else KeyboardMode.PINYIN
+        preferences.edit().putBoolean("zhuyin", chineseMode == KeyboardMode.ZHUYIN).apply()
+        if (!activateSchema(chineseMode)) return
         if (nativeEngineAvailable && keyboardMode.isChineseMode()) {
             keyboardMode = chineseMode
         }
@@ -188,15 +232,18 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     }
 
     override fun onDestroy() {
+        serviceDestroyed = true
+        rimeSession?.let(RimeBridge::destroySession)
+        rimeSession = null
         moveLifecycleToCreated()
         keyboardComposeView?.disposeComposition()
         keyboardComposeView = null
         inputViewContentBound = false
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        serviceScope.cancel()
         viewModelStore.clear()
-        if (nativeEngineAvailable) {
-            RimeBridge.shutdown()
-        }
+        // RimeBridge is process-scoped. Retain its initialized engine across service
+        // recreation; cancelling a service must not finalize another service's startup.
         super.onDestroy()
     }
 
@@ -231,7 +278,8 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
                 onKeyPress = { key -> handleKeyPress(key) },
                 onCandidateSelected = { index, candidate -> commitCandidate(index, candidate) },
                 candidates = candidates,
-                chineseEnabled = chineseEnabled,
+                chineseEnabled = chineseEnabled && nativeEngineAvailable,
+                statusMessage = if (engineLoading) "Preparing offline dictionaries… English is ready" else if (!nativeEngineAvailable) "Chinese unavailable · ${nativeEngineUnavailableMessage.orEmpty()}" else "",
                 enterLabel = enterLabel,
                 quickCommandSuggestions = if (keyboardMode == KeyboardMode.COMMANDS) {
                     CommandPalette.defaultQuickCommands
@@ -247,7 +295,7 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
     }
 
     private fun handleKeyPress(key: String) {
-        typingController?.key(key, keyboardMode == KeyboardMode.PINYIN)
+        typingController?.key(key, keyboardMode.isChineseMode())
         rimeSession?.let(::syncSessionState)
     }
 
@@ -255,14 +303,33 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
         if ((!nativeEngineAvailable || !chineseEnabled) && mode.isChineseMode()) return
         typingController?.commitRaw()
         clearCompositionState()
-        keyboardMode = if (mode == KeyboardMode.ZHUYIN) KeyboardMode.PINYIN else mode
-        if (keyboardMode == KeyboardMode.PINYIN || keyboardMode == KeyboardMode.LATIN) {
+        keyboardMode = mode
+        if (mode.isChineseMode()) {
+            chineseMode = mode
+            preferences.edit().putBoolean("zhuyin", mode == KeyboardMode.ZHUYIN).apply()
+            if (!activateSchema(mode)) return
+        }
+        if (keyboardMode.isChineseMode() || keyboardMode == KeyboardMode.LATIN) {
             preferredMode = keyboardMode
+            preferences.edit().putBoolean("english", keyboardMode == KeyboardMode.LATIN).apply()
+        }
+    }
+
+    private fun activateSchema(mode: KeyboardMode): Boolean {
+        return try {
+            rimeSession?.selectSchema(mode == KeyboardMode.ZHUYIN)
+            true
+        } catch (error: Exception) {
+            nativeEngineAvailable = false
+            nativeEngineUnavailableMessage = error.message ?: "Unable to load Chinese input schema"
+            keyboardMode = KeyboardMode.LATIN
+            showNativeEngineUnavailableToast()
+            false
         }
     }
 
     private fun commitCandidate(index: Int, candidate: String) {
-        if (keyboardMode == KeyboardMode.PINYIN) {
+        if (keyboardMode.isChineseMode()) {
             typingController?.select(index)
             rimeSession?.let(::syncSessionState)
         } else {
@@ -280,6 +347,18 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
         }
         candidates.clear()
         candidates.addAll(session.candidates)
+        val generation = ++rankingGeneration
+        if (text.isNotEmpty() && chineseEnabled) serviceScope.launch {
+            val code = "${chineseMode.name}:$text"
+            val entries = withContext(Dispatchers.IO) {
+                UserDictDatabase.getInstance(applicationContext).userDictDao().getEntries(code)
+            }
+            if (generation == rankingGeneration && session === rimeSession && text == session.composingText) {
+                session.rank(entries.associate { it.word to it.frequency })
+                candidates.clear()
+                candidates.addAll(session.candidates)
+            }
+        }
     }
 
     private fun clearCompositionState(resetSession: Boolean = true) {
@@ -287,6 +366,7 @@ class AegisInputService : InputMethodService(), LifecycleOwner, SavedStateRegist
             rimeSession?.reset()
         }
         inputConnectionWrapper.finishComposingText()
+        rankingGeneration++
         composingText = ""
         candidates.clear()
     }

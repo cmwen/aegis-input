@@ -43,7 +43,7 @@ private fun SetupScreen(onEnable: () -> Unit, onSwitch: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             Text("AegisInput", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-            Text("One familiar keyboard. English and 中文.", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("English · 拼音 · 注音. Entirely offline.", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Make yourself at home", style = MaterialTheme.typography.titleLarge)
@@ -57,7 +57,7 @@ private fun SetupScreen(onEnable: () -> Unit, onSwitch: () -> Unit) {
                 value = text,
                 onValueChange = { text = it },
                 label = { Text("English or 中文") },
-                placeholder = { Text("Try nihao, zhongwen, or hello") },
+                placeholder = { Text("Try nihao, ㄋㄧˇㄏㄠˇ, or hello") },
                 minLines = 3,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
                 modifier = Modifier.fillMaxWidth()
@@ -65,11 +65,11 @@ private fun SetupScreen(onEnable: () -> Unit, onSwitch: () -> Unit) {
             Card {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("A little guide", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text("中 / EN switches between Pinyin and English on the same QWERTY layout.")
+                    Text("Use 拼音 / 注音 above the keys to switch Chinese input. EN opens English; 中 returns to your chosen Chinese mode.")
                     Text("Type Pinyin without tones. Tap a Chinese candidate, or press space to choose the first one. Swipe the candidate row for more.")
                     Text("Enter keeps the letters you typed. ?123 opens numbers and punctuation. Use v for ü, and an apostrophe to separate syllables.")
-                    Text("Private by design", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text("Your typing stays on this device. No network access, accounts, or cloud suggestions.")
+                    Text("Private by design · learns on this device", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("Your typing and learned candidate preferences stay on this device. Password fields use English and never learn. No network access, accounts, or cloud suggestions.")
                 }
             }
         }

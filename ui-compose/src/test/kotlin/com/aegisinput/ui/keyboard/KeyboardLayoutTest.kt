@@ -28,4 +28,10 @@ class KeyboardLayoutTest {
         assertTrue(rows(KeyboardMode.SYMBOLS).last().any { it.code == "MODE_CHINESE" })
         assertTrue(rows(KeyboardMode.SYMBOLS).last().any { it.code == "MODE_LATIN" })
     }
+    @Test fun zhuyinExposesEverySymbolAndToneWithoutPaging() {
+        val keys = rows(KeyboardMode.ZHUYIN).flatten().map { it.code }.toSet()
+        "ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄧㄨㄩㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦˉˊˇˋ˙".forEach {
+            assertTrue("Missing $it", it.toString() in keys)
+        }
+    }
 }

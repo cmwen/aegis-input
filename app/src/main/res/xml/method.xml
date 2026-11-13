@@ -7,4 +7,7 @@
         android:imeSubtypeMode="keyboard"
         android:imeSubtypeLocale="zh_CN"
         android:label="@string/subtype_pinyin" />
+    <subtype android:imeSubtypeExtraValue="mode=zhuyin"
+        android:imeSubtypeMode="keyboard" android:imeSubtypeLocale="zh_TW"
+        android:label="@string/subtype_zhuyin" />
 </input-method>

@@ -21,3 +21,6 @@ out/
 *.swp
 *~
 .antigravitycli/
+
+.native-downloads/
+engine-rime/src/main/cpp/vendor/

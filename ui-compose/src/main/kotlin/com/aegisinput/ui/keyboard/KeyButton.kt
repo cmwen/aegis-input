@@ -79,7 +79,7 @@ fun KeyButton(
                 "SPACE" -> "Space"
                 "ENTER" -> "Enter"
                 "SHIFT" -> "Shift"
-                "MODE_CHINESE" -> "Switch to Chinese Pinyin"
+                "MODE_CHINESE" -> "Switch to Chinese"
                 "MODE_LATIN" -> "Switch to English"
                 "SYMBOLS" -> "Numbers and symbols"
                 else -> keyDef.label

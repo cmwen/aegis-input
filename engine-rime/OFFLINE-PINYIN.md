@@ -1,46 +1,11 @@
-# Offline Pinyin engine and bundled dictionary
+# Offline Librime and dictionary provenance
 
-The `RimeBridge` / `RimeSession` names remain for source compatibility. This build
-uses AegisInput's independent C++ full-Pinyin decoder, **not librime**. It needs no
-external native downloads, schema compilation, network access, or runtime setup.
+The current engine is **real Librime 1.17**, statically linked into AegisInput's own JNI library. The independent Pinyin decoder has been removed. `scripts/native/bootstrap-rime.py` lists immutable upstream commits, HTTPS archive URLs and SHA-256 checksums for Librime, Boost, glog, yaml-cpp, leveldb, marisa-trie and OpenCC. It verifies every source archive before extraction. Build system configuration follows the upstream components' CMake target contracts; no third-party frontend JNI code or frontend binary is linked.
 
-## Dictionary provenance
+Native dependency licenses: Librime/glog/leveldb BSD; Boost BSL-1.0; yaml-cpp MIT; OpenCC Apache-2.0; marisa BSD/LGPL dual license (BSD selected). Copyright/license notices are packaged under `app/src/main/assets/notices/`. Embedded dependency notices are included there as well.
 
-- Project: Rime's official `rime-pinyin-simp`, https://github.com/rime/rime-pinyin-simp
-- Revision: `0c6861ef7420ee780270ca6d993d18d4101049d0`
-- Upstream file: https://github.com/rime/rime-pinyin-simp/blob/0c6861ef7420ee780270ca6d993d18d4101049d0/pinyin_simp.dict.yaml
-- Bundled verbatim as `app/src/main/assets/rime/pinyin_simp.dict.yaml` (1,266,216 bytes).
-- SHA-256: `e341598343a0f0f2035bb1aafc34a7f3bb7887deeecb3f60796262aaa2983e6b`
-- Upstream identifies this dictionary as derived from Android Pinyin IME.
-- License: Apache License 2.0. Verbatim upstream license and author attribution are
-  bundled alongside the data as `PINYIN-SIMP-LICENSE` and `PINYIN-SIMP-AUTHORS`.
-- Dictionary contains over 65,000 weighted characters and phrases. No handpicked
-  demonstration entries or per-word code overrides are used.
+The simplified Pinyin dictionary is Rime's official `rime-pinyin-simp`, commit `0c6861ef7420ee780270ca6d993d18d4101049d0`, file `pinyin_simp.dict.yaml`, upstream SHA-256 `e341598343a0f0f2035bb1aafc34a7f3bb7887deeecb3f60796262aaa2983e6b`. It contains over 65,000 weighted characters and phrases, derived from Android's Pinyin IME, under Apache-2.0. Its original license and authors are bundled alongside the data.
 
-## Behavior and scope
+Zhuyin uses the pre-existing bundled `terra_pinyin.dict.yaml` from Rime's official Terra Pinyin distribution. Its embedded source attribution and CC-BY-SA-3.0 notice are preserved; the dictionary source is unmodified. Its preset vocabulary is provided by the official Rime essay dataset (commit `e9b1a374a6ea015fca5bdd04318924b4483ac35a`; archive SHA-256 `11559224d48709b0d77009a550804bfc2b763cfdf048c8d8fe224b3d36ba441c`), bundled as `essay.txt` under LGPL-3.0 with its license. Dictionary source remains distributed as readable YAML. Rime's bundled `zhuyin.yaml` phonetic mapping is supplemented with AegisInput fuzzy rules. The app-specific schemas intentionally avoid unrelated schema dependencies and external OpenCC data files. Editable YAML and essay sources plus their licenses ship with the application; users may replace them when rebuilding.
 
-The dictionary is installed atomically in private app storage and loaded once.
-Initialization fails visibly if it is missing or incomplete. Exact phrase matches
-rank first by upstream frequency. A bounded dynamic-programming beam combines
-multiple dictionary words using log frequencies; the final incomplete word can
-receive prefix completions. Apostrophes enforce syllable boundaries (`xi'an`).
-Up to 12 distinct full-composition candidates are returned. Selecting one commits
-the whole candidate and clears the session. Raw commit returns the typed Pinyin.
-Backspace edits one ASCII composing character. Input is bounded at 64 characters.
-Native state is guarded by a mutex; separate sessions isolate composing text.
-Candidate strings cross JNI as UTF-16, preserving supplementary characters.
-
-Supported input is lowercase full Pinyin and apostrophe, including `v` for ü.
-Output follows the simplified Chinese dictionary (which also includes uncommon
-traditional character variants). This version does not implement Zhuyin, tone
-numbers, adaptive language-model learning, or librime schema/fuzzy-rule execution.
-The older schema assets are historical resources and are not loaded by this decoder.
-
-## Verification
-
-Run `bash engine-rime/src/test/cpp/run-tests.sh` from the repository. It compiles
-and exercises the actual native decoder against the bundled complete dictionary.
-Checks cover direct phrases, multiple-word composition (`nihaozhongwen`), explicit
-syllable boundaries, deletion/retyping, prefix candidates, selection/reset, raw
-commit, invalid keys and indices, input limits, and missing-data failure. Android
-JNI/build validation is covered by the repository's normal Gradle checks.
+Candidate conversion, phrase combination, native user dictionary learning and fuzzy spelling execute in Librime. Room additionally ranks selected words locally using composite pronunciation/word keys. No runtime downloads or network permission are needed. Host `run-tests.sh` and Android `RimeAcceptanceTest` exercise real schema deployment and conversion rather than a stand-in decoder.

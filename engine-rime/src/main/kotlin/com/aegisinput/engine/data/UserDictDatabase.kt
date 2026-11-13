@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [UserDictEntry::class], version = 1, exportSchema = false)
+@Database(entities = [UserDictEntry::class], version = 2, exportSchema = false)
 abstract class UserDictDatabase : RoomDatabase() {
 
     abstract fun userDictDao(): UserDictDao
@@ -20,7 +20,14 @@ abstract class UserDictDatabase : RoomDatabase() {
                     context.applicationContext,
                     UserDictDatabase::class.java,
                     "aegis_user_dict.db"
-                ).build()
+                ).addMigrations(object : androidx.room.migration.Migration(1, 2) {
+                    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                        db.execSQL("CREATE TABLE user_dict_new (code TEXT NOT NULL, word TEXT NOT NULL, frequency INTEGER NOT NULL, lastUsed INTEGER NOT NULL, PRIMARY KEY(code, word))")
+                        db.execSQL("INSERT INTO user_dict_new SELECT code, word, frequency, lastUsed FROM user_dict")
+                        db.execSQL("DROP TABLE user_dict")
+                        db.execSQL("ALTER TABLE user_dict_new RENAME TO user_dict")
+                    }
+                }).build()
                 INSTANCE = instance
                 instance
             }

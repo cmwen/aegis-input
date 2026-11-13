@@ -14,6 +14,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
 
+        externalNativeBuild { cmake { targets += "aegisinput-engine" } }
+
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
         }
@@ -61,4 +63,17 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext)
     androidTestImplementation(libs.espresso.core)
+}
+
+val bootstrapRime by tasks.registering(Exec::class) {
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "scripts/native/bootstrap-rime.py")
+    inputs.file(rootProject.file("scripts/native/bootstrap-rime.py"))
+    listOf("boost", "librime", "librime/deps/glog", "librime/deps/yaml-cpp",
+        "librime/deps/leveldb", "librime/deps/marisa-trie", "librime/deps/opencc").forEach {
+        outputs.file("src/main/cpp/vendor/$it/.aegis-source")
+    }
+}
+tasks.configureEach {
+    if (name.startsWith("configureCMake")) dependsOn(bootstrapRime)
 }

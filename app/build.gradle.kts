@@ -114,6 +114,7 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.runtime)
 
+    implementation(libs.room.runtime)
     implementation(libs.core.ktx)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.lifecycle.viewmodel.compose)

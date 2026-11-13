@@ -3,7 +3,7 @@ package com.aegisinput.engine
 import android.content.Context
 
 /**
- * JNI bridge to the bundled offline Pinyin decoder. Names are retained for API compatibility.
+ * JNI bridge to the bundled Librime engine and offline schemas.
  * Runs entirely on-device — no data leaves the device.
  */
 object RimeBridge {
@@ -32,8 +32,8 @@ object RimeBridge {
         if (initialized) return true
         return try {
             copyAssetsToFilesDir(context)
-            val dataDir = context.filesDir.resolve("rime").absolutePath
-            nativeInitialize(dataDir, dataDir)
+            val directory = context.filesDir.resolve("rime")
+            nativeInitialize(directory.resolve("user").absolutePath, directory.resolve("shared").absolutePath)
             initialized = true
             true
         } catch (error: UnsatisfiedLinkError) {
@@ -46,19 +46,18 @@ object RimeBridge {
     }
 
     private fun copyAssetsToFilesDir(context: Context) {
-        val rimeDir = context.filesDir.resolve("rime")
-        if (!rimeDir.exists()) {
-            rimeDir.mkdirs()
-        }
-        val destFile = rimeDir.resolve("pinyin_simp.dict.yaml")
-        val temporary = rimeDir.resolve("pinyin_simp.dict.yaml.tmp")
-        try {
-            context.assets.open("rime/pinyin_simp.dict.yaml").use { input ->
-                temporary.outputStream().use { output -> input.copyTo(output) }
+        val shared = context.filesDir.resolve("rime/shared").apply { mkdirs() }
+        context.filesDir.resolve("rime/user").mkdirs()
+        // Replace schema/dictionary files after app updates; keep learned user data separate.
+        for (name in context.assets.list("rime").orEmpty()) {
+            if (!name.endsWith(".yaml") && name != "essay.txt") continue
+            val destination = shared.resolve(name)
+            val bytes = context.assets.open("rime/$name").use { it.readBytes() }
+            if (!destination.exists() || !destination.readBytes().contentEquals(bytes)) {
+                val temporary = shared.resolve("$name.tmp")
+                temporary.writeBytes(bytes)
+                check(temporary.renameTo(destination)) { "Unable to install Rime schema: $name" }
             }
-            check(temporary.renameTo(destFile)) { "Unable to install the offline Pinyin dictionary." }
-        } finally {
-            temporary.delete()
         }
     }
 
@@ -106,6 +105,11 @@ object RimeBridge {
         return nativeSelectCandidate(sessionId, index)
     }
 
+    fun selectSchema(sessionId: Long, zhuyin: Boolean): Boolean {
+        ensureReady()
+        return nativeSelectSchema(sessionId, if (zhuyin) "aegis_zhuyin" else "aegis_pinyin")
+    }
+
     fun resetSession(sessionId: Long) {
         ensureReady()
         nativeClearComposition(sessionId)
@@ -142,6 +146,7 @@ object RimeBridge {
 
     // --- Native methods ---
     private external fun nativeInitialize(dataDir: String, sharedDir: String)
+    private external fun nativeSelectSchema(sessionId: Long, schema: String): Boolean
     private external fun nativeShutdown()
     private external fun nativeCreateSession(): Long
     private external fun nativeDestroySession(sessionId: Long)

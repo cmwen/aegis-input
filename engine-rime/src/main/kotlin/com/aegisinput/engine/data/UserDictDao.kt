@@ -8,9 +8,9 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Update
 
-@Entity(tableName = "user_dict")
+@Entity(tableName = "user_dict", primaryKeys = ["code", "word"])
 data class UserDictEntry(
-    @PrimaryKey val code: String,
+    val code: String,
     val word: String,
     val frequency: Int = 1,
     val lastUsed: Long = System.currentTimeMillis()
@@ -29,6 +29,15 @@ interface UserDictDao {
 
     @Query("UPDATE user_dict SET frequency = frequency + 1, lastUsed = :timestamp WHERE code = :code AND word = :word")
     suspend fun boost(code: String, word: String, timestamp: Long = System.currentTimeMillis())
+
+    @Query("SELECT * FROM user_dict WHERE code = :code AND word = :word LIMIT 1")
+    suspend fun find(code: String, word: String): UserDictEntry?
+
+    @androidx.room.Transaction
+    suspend fun learn(code: String, word: String, timestamp: Long = System.currentTimeMillis()) {
+        val previous = find(code, word)
+        upsert(UserDictEntry(code, word, (previous?.frequency ?: 0) + 1, timestamp))
+    }
 
     @Query("DELETE FROM user_dict WHERE lastUsed < :cutoff AND frequency < :minFreq")
     suspend fun pruneOldEntries(cutoff: Long, minFreq: Int = 2)

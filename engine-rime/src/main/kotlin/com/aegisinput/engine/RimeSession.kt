@@ -1,32 +1,28 @@
 package com.aegisinput.engine
 
-/**
- * Represents an active offline Pinyin input session. Each typing context
- * gets its own session to isolate composing state.
- */
+/** One editor's Rime session; visible candidate indices retain their native identity. */
 class RimeSession(val id: Long) {
-
-    val composingText: String
-        get() = RimeBridge.getComposingText(id)
-
-    val candidates: List<String>
-        get() = RimeBridge.getCandidates(id)
-
-    fun hasComposing(): Boolean = composingText.isNotEmpty()
-
+    private var frequencies: Map<String, Int> = emptyMap()
+    private var nativeCandidates: List<String> = emptyList()
+    val composingText: String get() = RimeBridge.getComposingText(id)
+    val candidates: List<String> get() {
+        nativeCandidates = RimeBridge.getCandidates(id)
+        return nativeCandidates.sortedByDescending { frequencies[it] ?: 0 }
+    }
+    fun rank(frequencies: Map<String, Int>) { this.frequencies = frequencies }
+    fun hasComposing() = composingText.isNotEmpty()
     fun processKey(key: String): Boolean {
+        frequencies = emptyMap()
         return RimeBridge.processKey(id, key)
     }
-
-    fun commit(): String {
-        return RimeBridge.commitComposition(id)
-    }
-
+    fun commit() = RimeBridge.commitComposition(id)
     fun selectCandidate(index: Int): String {
-        return RimeBridge.selectCandidate(id, index)
+        val word = candidates.getOrNull(index) ?: return ""
+        return RimeBridge.selectCandidate(id, nativeCandidates.indexOf(word))
     }
-
-    fun reset() {
-        RimeBridge.resetSession(id)
+    fun selectSchema(zhuyin: Boolean) {
+        frequencies = emptyMap()
+        check(RimeBridge.selectSchema(id, zhuyin)) { "Unable to load Rime input schema" }
     }
+    fun reset() { frequencies = emptyMap(); RimeBridge.resetSession(id) }
 }

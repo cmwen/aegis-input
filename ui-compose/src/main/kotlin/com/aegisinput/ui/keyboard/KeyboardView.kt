@@ -1,5 +1,11 @@
 package com.aegisinput.ui.keyboard
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -73,18 +79,11 @@ fun KeyboardView(
     onSwitchKeyboard: () -> Unit = {},
     modifier: Modifier = Modifier,
     chineseEnabled: Boolean = true,
+    statusMessage: String = "",
     enterLabel: String = "↵"
 ) {
     var shiftEnabled by remember(keyboardMode) { mutableStateOf(false) }
     var zhuyinPage by remember(keyboardMode) { mutableStateOf(1) }
-
-    LaunchedEffect(composingText) {
-        if (composingText.isEmpty()) {
-            zhuyinPage = 1
-        } else if (zhuyinPage == 1 && composingText.isNotEmpty()) {
-            zhuyinPage = 2
-        }
-    }
 
     val visibleCandidates = if (candidates.isNotEmpty()) {
         candidates
@@ -112,56 +111,70 @@ fun KeyboardView(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = composingText.ifEmpty { if (keyboardMode == KeyboardMode.PINYIN) "拼音 · 简体中文" else "English · QWERTY" },
+                    text = composingText.ifEmpty { statusMessage.ifEmpty { when(keyboardMode) { KeyboardMode.PINYIN -> "拼音 · 离线"; KeyboardMode.ZHUYIN -> "注音 · 離線"; else -> "English · QWERTY" } } },
                     color = if (composingText.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
                     fontSize = if (composingText.isEmpty()) 12.sp else 18.sp,
                     modifier = Modifier.weight(1f),
                     maxLines = 1
                 )
-                Text("Aegis", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (chineseEnabled) {
+                    Text("拼音", fontSize = 14.sp, modifier = Modifier.padding(8.dp).clickable { onKeyboardModeChange(KeyboardMode.PINYIN) })
+                    Text("注音", fontSize = 14.sp, modifier = Modifier.padding(8.dp).clickable { onKeyboardModeChange(KeyboardMode.ZHUYIN) })
+                }
             }
             CandidateBar(
                 candidates = visibleCandidates,
                 onCandidateSelected = onCandidateSelected
             )
 
+            fun press(key: KeyDef) {
+                when (key.code) {
+                    "MODE_LATIN" -> onKeyboardModeChange(KeyboardMode.LATIN)
+                    "MODE_COMMANDS" -> onKeyboardModeChange(KeyboardMode.COMMANDS)
+                    "MODE_CHINESE" -> if (chineseEnabled) onKeyboardModeChange(chineseMode)
+                    "SYMBOLS" -> onKeyboardModeChange(KeyboardMode.SYMBOLS)
+                    "SHIFT" -> { shiftEnabled = !shiftEnabled }
+                    else -> {
+                        onKeyPress(key.code)
+                        if (shiftEnabled && keyboardMode.supportsShift()) shiftEnabled = false
+                    }
+                }
+            }
             rows.forEachIndexed { rowIndex, row ->
+                val bounds = remember(row) { mutableStateMapOf<String, DynamicHitbox.KeyBounds>() }
+                val touchWeights = remember(keyboardMode) { mutableStateMapOf<String, Float>() }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = if (rowIndex == 1 && keyboardMode != KeyboardMode.ZHUYIN) 18.dp else 4.dp)
-                ) {
-                    row.forEach { keyDef ->
-                        val hint = if (keyboardMode == KeyboardMode.ZHUYIN) {
-                            zhuyinHints[keyDef.label]
-                        } else null
-
-                        KeyButton(
-                            keyDef = when {
-                                keyDef.code == "ENTER" -> keyDef.copy(label = enterLabel)
-                                keyDef.code == "SHIFT" && shiftEnabled -> keyDef.copy(label = "⬆")
-                                else -> keyDef
-                            },
-                            hintLabel = hint,
-                            enabled = keyDef.code != "MODE_CHINESE" || chineseEnabled,
-                            onPress = { key ->
-                                when (key.code) {
-                                    "MODE_LATIN" -> onKeyboardModeChange(KeyboardMode.LATIN)
-                                    "MODE_COMMANDS" -> onKeyboardModeChange(KeyboardMode.COMMANDS)
-                                    "MODE_CHINESE" -> if (chineseEnabled) onKeyboardModeChange(chineseMode)
-                                    "SYMBOLS" -> onKeyboardModeChange(KeyboardMode.SYMBOLS)
-                                    "SHIFT" -> if (keyboardMode == KeyboardMode.PINYIN) onKeyboardModeChange(KeyboardMode.LATIN) else { shiftEnabled = !shiftEnabled }
-                                    "TOGGLE_PAGE" -> {
-                                        zhuyinPage = if (zhuyinPage == 1) 2 else 1
-                                    }
-                                    else -> {
-                                        onKeyPress(key.code)
-                                        if (shiftEnabled && keyboardMode.supportsShift()) {
-                                            shiftEnabled = false
+                        .pointerInput(row, chineseEnabled) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                down.consume()
+                                val up = waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                                if (up != null) {
+                                    up.consume()
+                                    DynamicHitbox.resolveKey(up.position, bounds.values.toList(), touchWeights)?.let { key ->
+                                        if (key.code != "MODE_CHINESE" || chineseEnabled) {
+                                            touchWeights[key.code] = ((touchWeights[key.code] ?: 1f) + 0.01f).coerceAtMost(1.15f)
+                                            press(key)
                                         }
                                     }
                                 }
-                            },
+                            }
+                        }
+                ) {
+                    row.forEach { original ->
+                        val keyDef = when {
+                            original.code == "ENTER" -> original.copy(label = enterLabel)
+                            original.code == "SHIFT" && shiftEnabled -> original.copy(label = "⬆")
+                            else -> original
+                        }
+                        KeyButton(
+                            keyDef = keyDef,
+                            enabled = keyDef.code != "MODE_CHINESE" || chineseEnabled,
+                            onPress = ::press,
+                            onBoundsChanged = { bounds[it.keyDef.code] = it },
                             modifier = Modifier.weight(keyDef.widthWeight)
                         )
                     }

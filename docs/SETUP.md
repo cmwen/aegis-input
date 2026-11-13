@@ -1,36 +1,26 @@
 # Build and use AegisInput
 
-## Requirements
-
-- JDK 17
-- Gradle 8.9 (CI), or a compatible Gradle 8.x installation
-- Android SDK platform and build-tools 35
-- Android NDK `28.2.13676358`
-- CMake `3.22.1`
-
-Set `ANDROID_HOME` to the installed Android SDK. The project does not include a Gradle wrapper. The offline Pinyin dictionary is already bundled; no Librime build or downloaded runtime assets are required.
-
-## Validation
+Install JDK 17, Python 3.12+, Gradle 8.9 (or compatible 8.x), Android SDK/build-tools 35, NDK `28.2.13676358` and CMake `3.22.1`. Set `ANDROID_HOME`. No Gradle wrapper is included.
 
 ```sh
 gradle --stacktrace :engine-rime:testDebugUnitTest :ui-compose:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug
 bash engine-rime/src/test/cpp/run-tests.sh
 ```
 
-The native acceptance tests use the actual bundled lexicon and test Chinese phrases, composed multi-word input, apostrophe boundaries, editing, selection, reset, and load failure. The JVM tests cover layout and editor behavior. The debug APK is `app/build/outputs/apk/debug/app-debug.apk`.
+Gradle's native configure tasks bootstrap pinned/checksummed upstream sources using `scripts/native/bootstrap-rime.py`. Source archives are cached under `.native-downloads/`; extracted sources under `engine-rime/src/main/cpp/vendor/`; neither is committed. A clean CI build follows the same path. The host test script accepts `CMAKE_BIN` or uses Android SDK's CMake; the native host decoder tests use a temporary user directory and real bundled schemas/dictionaries.
 
-## On a device
+APK: `app/build/outputs/apk/debug/app-debug.apk`. Enable/select the installed IME from its setup screen, then tap its real text field. Choose 拼音, type `nihao`, then space or candidate `你好`. Choose 注音 and enter `ㄋㄧˇㄏㄠˇ`; select `你好`. Both languages support fuzzy pronunciations and learn selected words locally. English remains available while first-start dictionaries are being prepared. Failures appear in the keyboard's status line.
 
-1. Install the debug APK and open AegisInput.
-2. Tap **Enable keyboard** and enable AegisInput in Android settings.
-3. Tap **Choose AegisInput** and select it in the system picker.
-4. Tap the actual text field on the setup screen to test the installed IME.
-5. Choose **中** for Chinese Pinyin, type `nihao`, and choose `你好` or press space. Choose **EN** for English.
+For real Android JNI/database acceptance checks:
 
-The Chinese keyboard uses standard QWERTY, tone-free Pinyin, `v` for ü, and `'` for explicit syllable boundaries. Tap a candidate to commit it; swipe the candidate strip to see more. Enter commits the Roman composing text without sending the editor action until composition is empty. Switching languages preserves Roman composing text. Password fields use English and cannot activate Chinese composition.
+```sh
+gradle :app:connectedDebugAndroidTest
+```
 
-Only Pinyin Chinese input is supported in this version. The previous Zhuyin preview and mock engine have been removed.
+These tests cover Pinyin `nihao`, fuzzy `zongwen`, Zhuyin `ㄋㄧˇㄏㄠˇ`, fuzzy `ㄗㄨㄥˉㄨㄣˊ`, candidate selection/reset and multiple Room words for one code. Physical UI verification should additionally type English, switch languages, select/scroll candidates, delete text and check a password field.
 
-## Signing and releases
+Debug builds use Android's debug keystore. Existing GitHub Actions release signing/publication remains in place. Local builds do not publish a release.
 
-Debug builds use Android's debug keystore. Release signing and publication remain configured in the existing GitHub Actions release workflow; rebuilding locally does not publish a release.
+## First-start timing
+
+On the tested Lenovo TB-8505F (Android 10, ARM64), the five real JNI/database acceptance tests including first-time essay/dictionary deployment completed in about 97 seconds. This is the whole test-suite duration, not an isolated initialization measurement. Initial dictionary preparation can take a minute or more on slower devices; the keyboard shows its preparation status and English remains available. Compiled data persists for later launches.
