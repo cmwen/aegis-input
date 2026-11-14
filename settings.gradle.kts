@@ -17,3 +17,5 @@ rootProject.name = "AegisInput"
 include(":app")
 include(":engine-rime")
 include(":ui-compose")
+
+include(":e2e-host")

@@ -17,7 +17,7 @@ For real Android JNI/database acceptance checks:
 gradle :app:connectedDebugAndroidTest
 ```
 
-These tests cover Pinyin `nihao`, fuzzy `zongwen`, Zhuyin `ㄋㄧˇㄏㄠˇ`, fuzzy `ㄗㄨㄥˉㄨㄣˊ`, candidate selection/reset and multiple Room words for one code. Physical UI verification should additionally type English, switch languages, select/scroll candidates, delete text and check a password field.
+These tests cover Pinyin `nihao`, fuzzy `zongwen`, Zhuyin `ㄋㄧˇㄏㄠˇ`, fuzzy `ㄗㄨㄥˉㄨㄣˊ`, candidate selection/reset and multiple Room words for one code. The [isolated device regression runner](DEVICE-REGRESSION.md) additionally automates real editor typing, language switching, candidate selection, deletion, composing rotations, password/search fields and process-restart persistence. Candidate scrolling and visual/touch comfort remain manual checks.
 
 Debug builds use Android's debug keystore. Existing GitHub Actions release signing/publication remains in place. Local builds do not publish a release.
 

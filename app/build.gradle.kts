@@ -43,6 +43,7 @@ val hasReleaseSigning = releaseKeystorePath.isPresent &&
 
 android {
     namespace = "com.aegisinput.app"
+    testBuildType = providers.gradleProperty("aegisTestBuildType").getOrElse("debug")
     compileSdk = 35
 
     defaultConfig {
@@ -70,6 +71,12 @@ android {
     }
 
     buildTypes {
+        create("e2e") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".e2e"
+            versionNameSuffix = "-e2e"
+            matchingFallbacks += "debug"
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(

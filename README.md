@@ -29,6 +29,8 @@ Android acceptance tests exercise the packaged JNI library, real Pinyin and Zhuy
 gradle :app:connectedDebugAndroidTest
 ```
 
+For repeatable real keyboard → Android InputConnection → editor regression (including rotation, password/action behavior and restart persistence), run `scripts/test-device-e2e.sh --serial DEVICE_SERIAL`. See the [coverage and isolation guide](docs/DEVICE-REGRESSION.md).
+
 ## Install
 
 Install the APK, open AegisInput, enable it in Android settings and choose it from the keyboard picker. Tap the launcher's text field to test the actual IME. First startup prepares offline dictionaries in the background and can take a minute or more on slower devices; English remains available while it works.
